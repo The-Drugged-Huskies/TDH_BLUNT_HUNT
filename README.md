@@ -39,6 +39,11 @@
 - [x] **Wallet Connection**: Connect your Dogechain wallet to save scores.
 - [x] **Responsive Design**: Fits 4:3 NES aspect ratio on any screen.
 - [x] **Game Loop**: Rounds, difficulty scaling, timer, and Game Over states.
+- [x] **Combo System**: Stack score multipliers (2x, 4x, 8x) by hitting consecutive shots.
+- [x] **Special Blunts**:
+    - **Gold**: Fast & high reward.
+    - **Armored**: Bounces shots, takes 2 hits.
+- [x] **Audio**: Procedural sound effects for shooting, hitting, and collisions.
 
 ---
 *Built with ❤️ for the Dogechain Community.*

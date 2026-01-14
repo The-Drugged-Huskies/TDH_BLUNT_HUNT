@@ -43,6 +43,9 @@ class Game {
         this.multiplier = 1;
         this.shotHit = false;
 
+        // Audio
+        this.audio = new AudioManager();
+
         this.resize();
         window.addEventListener('resize', () => this.resize());
 
@@ -320,6 +323,8 @@ class Game {
                     // Armored Clink - Bounce husky
                     this.husky.dx *= -0.8;
                     this.husky.dy *= -0.8;
+
+                    this.audio.clink(); // PLAY CLINK
                     this.particles.spawnFloatingText(blunt.x, blunt.y, "CLINK!", '#aaa');
                     this.particles.spawnExplosion(blunt.x, blunt.y, '#ccc');
                 } else {
@@ -338,6 +343,7 @@ class Game {
                     this.updateScore(points);
 
                     // Trigger Visuals
+                    this.audio.hit(); // PLAY CRUNCH
                     this.particles.spawnExplosion(blunt.x, blunt.y, blunt.type === 'gold' ? '#FFD700' : '#8b4513');
 
                     let text = `+${points}`;
@@ -538,6 +544,7 @@ class Slingshot {
             this.game.husky = new Husky(this.game, this.x, this.y, dx * power, dy * power);
             this.wobbleStartTime = performance.now();
             this.game.shotHit = false; // Reset hit tracking for this shot
+            this.game.audio.shoot(); // PLAY SHOOT
         }
     }
 
