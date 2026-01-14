@@ -156,6 +156,9 @@ class Game {
         this.gameDuration = 60; // seconds
         this.startTime = performance.now();
 
+        // Start Music
+        this.audio.startMusic();
+
         requestAnimationFrame(this.loop);
     }
 
@@ -163,6 +166,9 @@ class Game {
         this.isRunning = false;
         // Clear canvas to hide game elements
         this.ctx.clearRect(0, 0, this.width, this.height);
+
+        // Stop Music
+        this.audio.stopMusic();
 
         document.getElementById('final-score').innerText = this.score;
         document.getElementById('game-over-screen').classList.remove('hidden');
