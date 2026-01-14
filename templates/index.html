@@ -9,8 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"
-        type="application/javascript"></script>
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js" type="application/javascript"></script>
 </head>
 
 <body>
@@ -23,24 +22,31 @@
                     <span>TIME: <span id="timer">00:00</span></span>
                 </div>
                 <div id="wallet-container">
-                    <span id="balance-display" class="hidden">0.0000 DOGE</span>
-                    <button id="connect-wallet-btn" class="btn-wallet">Connect Wallet</button>
+                    <button id="connect-wallet" class="btn-wallet">Connect Wallet</button>
+                    <div id="balance-display" class="hidden">
+                        <span id="doge-balance">0.00</span> DOGE
+                    </div>
                 </div>
             </div>
-            <div id="start-screen" class="overlay active">
+            <div id="start-screen" class="overlay">
                 <h1 class="title">BLUNT HUNT</h1>
-                <p class="subtitle">Drag & Release to Launch the Husky!</p>
-                <button id="start-btn" class="btn-primary">START HUNT</button>
+                <p class="subtitle">DOGECHAIN EDITION</p>
+                <button id="start-btn" class="btn-primary">Start Hunt</button>
             </div>
             <div id="game-over-screen" class="overlay hidden">
                 <h1 class="title">GAME OVER</h1>
                 <p class="subtitle">Final Score: <span id="final-score">0</span></p>
-                <button id="restart-btn" class="btn-primary">PLAY AGAIN</button>
+                <button id="restart-btn" class="btn-primary">Play Again</button>
+            </div>
+            <div id="footer">
+                Blunt Hunt &copy; 2026 - Dogechain Edition
             </div>
         </div>
     </div>
-    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
+
+    <script src="{{ url_for('static', filename='js/sprite.js') }}"></script>
     <script src="{{ url_for('static', filename='js/wallet.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
 </body>
 
 </html>

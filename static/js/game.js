@@ -4,14 +4,21 @@
  * Coordinates interaction between the Slingshot, Husky, and Blunts.
  */
 class Game {
-    constructor() {
+    constructor(assets) {
         /** @type {HTMLCanvasElement} */
         this.canvas = document.getElementById('gameCanvas');
         /** @type {CanvasRenderingContext2D} */
         this.ctx = this.canvas.getContext('2d');
+        this.assets = assets;
 
-        this.width = this.canvas.width;
-        this.height = this.canvas.height;
+        // Fixed NES-like Resolution
+        this.canvas.width = 320;
+        this.canvas.height = 180;
+        this.width = 320;
+        this.height = 180;
+
+        // Disable smoothing for pixel look
+        this.ctx.imageSmoothingEnabled = false;
 
         this.slingshot = new Slingshot(this);
         this.husky = null;
@@ -111,6 +118,16 @@ class Game {
 
         this.ctx.clearRect(0, 0, this.width, this.height);
 
+        // Draw Background
+        const bg = this.assets['background'];
+        if (bg) {
+            this.ctx.drawImage(bg, 0, 0, this.width, this.height);
+        } else {
+            // Fallback
+            this.ctx.fillStyle = '#87CEEB';
+            this.ctx.fillRect(0, 0, this.width, this.height);
+        }
+
         this.updateTimer(timestamp);
 
         // Update & Draw Slingshot
@@ -118,7 +135,7 @@ class Game {
 
         // Update & Draw Husky
         if (this.husky) {
-            this.husky.update();
+            this.husky.update(timestamp);
             this.husky.draw(this.ctx);
 
             // Check boundaries
@@ -159,15 +176,23 @@ class Game {
 
     spawnBlunt() {
         const x = Math.random() * (this.width - 100) + 50;
-        const y = Math.random() * (this.height / 2) + 50; // Use upper half
-        this.blunts.push(new Blunt(x, y, this.bluntLifeTime));
+
+        // Dynamic Spawn Range
+        const topLimit = 70; // Clear status bar (50px + buffer)
+        const bottomLimit = this.height - 350; // Clear slingshot area (250 offset + buffer)
+        const spawnRange = Math.max(50, bottomLimit - topLimit); // Ensure at least some range
+
+        const y = Math.random() * spawnRange + topLimit;
+        this.blunts.push(new Blunt(this, x, y, this.bluntLifeTime));
     }
 
     checkCollision(circle1, circle2) {
+        // Use simpler collision, maybe bounding box or reduced radius for sprites
         const dx = circle1.x - circle2.x;
         const dy = circle1.y - circle2.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        return distance < (circle1.radius + circle2.radius);
+        // Reduce radius for tighter hitboxes
+        return distance < (circle1.radius * 0.8 + circle2.radius * 0.8);
     }
 }
 
@@ -185,28 +210,56 @@ class Slingshot {
         this.isDragging = false;
         this.dragX = this.x;
         this.dragY = this.y;
+        this.isDragging = false;
+        this.dragX = this.x;
+        this.dragY = this.y;
         this.maxPull = 150;
+
+        // Sprite
+        this.sprite = new Sprite({
+            image: this.game.assets['slingshot']
+        });
+
+        // Husky Sprite for aiming
+        this.huskySprite = new Sprite({
+            image: this.game.assets['husky']
+        });
     }
 
     updatePosition() {
         this.x = this.game.width / 2;
-        this.y = this.game.height - 150;
+        // 5% up from the "bottom/grass" position (which was height - 100)
+        this.y = this.game.height - 100 - (this.game.height * 0.05);
     }
 
     onMouseDown(x, y) {
-        // Simple hit test for slingshot area
-        const dist = Math.hypot(x - this.x, y - this.y);
-        if (dist < 100) { // Interaction radius
+        // Scale input coordinates to canvas 320x180
+        const rect = this.game.canvas.getBoundingClientRect();
+        const scaleX = this.game.width / rect.width;
+        const scaleY = this.game.height / rect.height;
+
+        const gameX = (x - rect.left) * scaleX;
+        const gameY = (y - rect.top) * scaleY;
+
+        const dist = Math.hypot(gameX - this.x, gameY - this.y);
+        if (dist < 40) { // Interaction radius
             this.isDragging = true;
-            this.dragX = x;
-            this.dragY = y;
+            this.dragX = gameX;
+            this.dragY = gameY;
         }
     }
 
     onMouseMove(x, y) {
         if (this.isDragging) {
-            const dx = x - this.x;
-            const dy = y - this.y;
+            const rect = this.game.canvas.getBoundingClientRect();
+            const scaleX = this.game.width / rect.width;
+            const scaleY = this.game.height / rect.height;
+
+            const gameX = (x - rect.left) * scaleX;
+            const gameY = (y - rect.top) * scaleY;
+
+            const dx = gameX - this.x;
+            const dy = gameY - this.y;
             const dist = Math.hypot(dx, dy);
 
             if (dist > this.maxPull) {
@@ -214,8 +267,8 @@ class Slingshot {
                 this.dragX = this.x + Math.cos(angle) * this.maxPull;
                 this.dragY = this.y + Math.sin(angle) * this.maxPull;
             } else {
-                this.dragX = x;
-                this.dragY = y;
+                this.dragX = gameX;
+                this.dragY = gameY;
             }
         }
     }
@@ -232,11 +285,10 @@ class Slingshot {
     shoot() {
         const dx = this.x - this.dragX;
         const dy = this.y - this.dragY;
-        // Vector is inverted because we pull back
         const power = 0.15;
 
         if (!this.game.husky) {
-            this.game.husky = new Husky(this.x, this.y, dx * power, dy * power);
+            this.game.husky = new Husky(this.game, this.x, this.y, dx * power, dy * power);
         }
     }
 
@@ -245,87 +297,85 @@ class Slingshot {
     }
 
     draw(ctx) {
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 4;
-
+        // Draw Bands Behind
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 6;
         ctx.beginPath();
-        ctx.moveTo(this.x - 20, this.y); // Left arm
+        ctx.moveTo(this.x - 25, this.y - 40); // Left fork tip approx
         ctx.lineTo(this.dragX, this.dragY);
-        ctx.lineTo(this.x + 20, this.y); // Right arm
+        ctx.lineTo(this.x + 25, this.y - 40); // Right fork tip approx
         ctx.stroke();
 
-        ctx.fillStyle = '#888';
-        ctx.beginPath();
-        ctx.arc(this.x - 20, this.y, 5, 0, Math.PI * 2);
-        ctx.arc(this.x + 20, this.y, 5, 0, Math.PI * 2);
-        ctx.fill();
+        // Draw Sprite Base
+        // Assuming sprite is centered at bottom
+        this.sprite.draw(ctx, this.x, this.y, 80, 80);
 
-        // Base
-        ctx.strokeStyle = '#8B4513';
-        ctx.lineWidth = 8;
-        ctx.beginPath();
-        ctx.moveTo(this.x, this.y + 100);
-        ctx.lineTo(this.x, this.y);
-        ctx.moveTo(this.x - 20, this.y);
-        ctx.lineTo(this.x, this.y + 30);
-        ctx.lineTo(this.x + 20, this.y);
-        ctx.stroke();
+        // Draw Husky if ready to shoot (not flying)
+        if (!this.game.husky) {
+            // Determine position: drag position if dragging, or center if idle
+            const hx = this.isDragging ? this.dragX : this.x;
+            const hy = this.isDragging ? this.dragY : this.y - 40; // Approx pouch height if idle
 
-        // Puck/Husky placeholder in band if not dragging but not shot? 
-        // For now simple band logic
-        if (this.isDragging) {
-            ctx.fillStyle = '#00ff9d'; // Accent color for the projectile indicator
-            ctx.beginPath();
-            ctx.arc(this.dragX, this.dragY, 15, 0, Math.PI * 2);
-            ctx.fill();
+            // Draw slightly smaller sized husky for the sling
+            this.huskySprite.draw(ctx, hx, hy, 60, 60);
         }
     }
 }
 
 class Husky {
-    constructor(x, y, dx, dy) {
+    constructor(game, x, y, dx, dy) {
+        this.game = game;
         this.x = x;
         this.y = y;
         this.dx = dx;
         this.dy = dy;
-        this.radius = 20;
-        this.gravity = 0.5;
+        this.radius = 25;
+        this.gravity = 0.4;
         this.friction = 0.99;
+        this.rotation = 0;
+
+        this.sprite = new Sprite({
+            image: this.game.assets['husky']
+        });
+        // this.sprite.setAnimation('fly');
     }
 
-    update() {
+    update(timestamp) {
         this.x += this.dx;
         this.y += this.dy;
         this.dy += this.gravity;
-        // this.dx *= this.friction; // Air resistance optional
+        // this.dx *= this.friction; 
+
+        // Calculate rotation based on velocity
+        this.rotation = Math.atan2(this.dy, this.dx);
+
+        this.sprite.update(timestamp);
     }
 
     draw(ctx) {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        // Placeholder visuals for Husky
-        ctx.fillStyle = '#bd00ff';
-        ctx.beginPath();
-        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#fff';
-        ctx.font = '12px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('DO', 0, 0); // Placeholder
-        ctx.restore();
+        this.sprite.draw(ctx, this.x, this.y, 70, 70, this.rotation);
     }
 }
 
 class Blunt {
-    constructor(x, y, lifetime) {
+    constructor(game, x, y, lifetime) {
+        this.game = game;
         this.x = x;
         this.y = y;
         this.radius = 25;
         this.spawnTime = performance.now();
         this.lifetime = lifetime;
-        this.floatOffset = Math.random() * 100;
         this.baseY = y;
+
+        this.sprite = new Sprite({
+            image: this.game.assets['blunt']
+        });
+
+        // Random movement parameters
+        this.speed = Math.random() * 2 + 1;
+        this.amplitude = Math.random() * 50 + 20;
+        this.frequency = Math.random() * 0.005 + 0.002;
+        this.direction = Math.random() > 0.5 ? 1 : -1;
     }
 
     isExpired(timestamp) {
@@ -333,9 +383,20 @@ class Blunt {
     }
 
     update(timestamp) {
-        // Floating effect
         const age = timestamp - this.spawnTime;
-        this.y = this.baseY + Math.sin((age / 500) + this.floatOffset) * 10;
+
+        // Horizontal movement
+        this.x += this.speed * this.direction;
+
+        // Zigzag / Sine wave
+        this.y = this.baseY + Math.sin(age * this.frequency) * this.amplitude;
+
+        // Bounce off walls
+        if (this.x > this.game.width - 50 || this.x < 50) {
+            this.direction *= -1;
+        }
+
+        this.sprite.update(timestamp);
     }
 
     draw(ctx) {
@@ -348,25 +409,34 @@ class Blunt {
 
         ctx.save();
         ctx.globalAlpha = Math.max(0, alpha);
-        ctx.translate(this.x, this.y);
 
-        // Placeholder visuals for Blunt
-        ctx.fillStyle = '#d4af37'; // Goldish
-        ctx.beginPath();
-        ctx.rect(-20, -10, 40, 20); // Horizontal blunt shape
-        ctx.fill();
-
-        // Cherry
-        ctx.fillStyle = '#ff4500';
-        ctx.beginPath();
-        ctx.arc(20, 0, 5, 0, Math.PI * 2);
-        ctx.fill();
+        this.sprite.draw(ctx, this.x, this.y, 60, 60, 0); // Slight larger
 
         ctx.restore();
     }
 }
 
 // Initialize game on load
-window.onload = () => {
-    const game = new Game();
+window.onload = async () => {
+    const loader = new AssetLoader();
+    const assetsToLoad = {
+        'husky': '/static/images/husky.png',
+        'blunt': '/static/images/blunt.png',
+        'slingshot': '/static/images/slingshot.png',
+        'background': '/static/images/background.png'
+    };
+
+    try {
+        const loadedAssets = {};
+        for (const [key, url] of Object.entries(assetsToLoad)) {
+            loadedAssets[key] = await loader.loadImage(key, url);
+        }
+
+        // Start Game
+        const game = new Game(loadedAssets);
+
+    } catch (err) {
+        console.error("Error loading assets:", err);
+        alert("Failed to load game assets. Check console.");
+    }
 };
