@@ -58,6 +58,7 @@ body {
     width: 100%;
     height: 100%;
     z-index: 1;
+    background-image: url('../images/background.png');
     background-size: cover;
     background-position: bottom center;
     background-repeat: no-repeat;
@@ -229,6 +230,12 @@ canvas {
 .overlay.hidden {
     display: none;
 }
+
+#start-screen {
+    background: rgba(0, 0, 0, 0.4);
+    /* Slight tint for readability, but mostly visible */
+}
+
 
 .title {
     font-size: 2.5rem;

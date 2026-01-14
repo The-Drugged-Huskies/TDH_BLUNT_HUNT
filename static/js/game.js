@@ -178,6 +178,7 @@ class Game {
     exitToMenu() {
         document.getElementById('game-over-screen').classList.add('hidden');
         document.getElementById('start-screen').classList.remove('hidden');
+        document.getElementById('nes-hud').classList.add('hidden');
 
         // Restore Header
         document.getElementById('nes-header').style.visibility = 'visible';
@@ -366,7 +367,11 @@ class Game {
                     this.updateScore(points);
 
                     // Trigger Visuals
-                    this.audio.hit(); // PLAY CRUNCH
+                    if (blunt.type === 'gold') {
+                        this.audio.goldHit();
+                    } else {
+                        this.audio.hit(); // PLAY CRUNCH
+                    }
                     this.particles.spawnExplosion(blunt.x, blunt.y, blunt.type === 'gold' ? '#FFD700' : '#8b4513');
 
                     let text = `+${points}`;
