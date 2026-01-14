@@ -530,7 +530,7 @@ class AudioManager {
             osc.type = 'square';
             osc.frequency.value = chordRoot * 4;
             const gain = this.ctx.createGain();
-            gain.gain.setValueAtTime(0.005, time);
+            gain.gain.setValueAtTime(0.0066, time);
             gain.gain.exponentialRampToValueAtTime(0.0075, time + 0.15);
             osc.connect(gain);
             gain.connect(this.delayNode);
