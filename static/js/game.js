@@ -38,6 +38,11 @@ class Game {
         this.speedMultiplier = 1;
         this.lastSpawnTime = 0;
 
+        // Combo System
+        this.combo = 0;
+        this.multiplier = 1;
+        this.shotHit = false;
+
         this.resize();
         window.addEventListener('resize', () => this.resize());
 
@@ -283,6 +288,12 @@ class Game {
 
             // Check boundaries
             if (this.husky.y > this.height + 100 || this.husky.x > this.width + 100 || this.husky.x < -100) {
+                // Combo Reset on Miss
+                if (!this.shotHit) {
+                    this.combo = 0;
+                    this.multiplier = 1;
+                }
+
                 this.husky = null; // Reset husky if it goes off screen
                 this.slingshot.reset();
             }
@@ -304,18 +315,26 @@ class Game {
             if (this.husky && this.checkCollision(this.husky, blunt)) {
                 this.blunts.splice(i, 1);
 
+                // Track Hit for Combo
+                this.shotHit = true;
+                this.combo++;
+                // Simple multiplier logic: Every 2 hits increases tier (1x -> 2x -> 4x -> 8x)
+                // limit to 8x
+                this.multiplier = Math.min(8, Math.pow(2, Math.floor(this.combo / 2)));
+                if (this.combo < 1) this.multiplier = 1;
+
                 // Score based on Round
-                const points = this.round * 10; // Base points? No, simple score logic
-                // Using round as score per hit based on code loop 'updateScore(this.round)' - wait
-                // previously it passed `this.round`.
-                // Let's make it more interesting? Or stick to existing logic.
-                // Existing: updateScore(this.round).
-                // Let's assume passed value IS the points.
-                this.updateScore(this.round);
+                const points = this.round * 10 * this.multiplier;
+                this.updateScore(points);
 
                 // Trigger Visuals
                 this.particles.spawnExplosion(blunt.x, blunt.y);
-                this.particles.spawnFloatingText(blunt.x, blunt.y, `+${this.round}`);
+
+                let text = `+${points}`;
+                if (this.multiplier > 1) {
+                    text += ` (x${this.multiplier}!)`;
+                }
+                this.particles.spawnFloatingText(blunt.x, blunt.y, text);
                 this.triggerShake(10); // Shake for 10 frames
 
                 // Round Progression
@@ -509,6 +528,7 @@ class Slingshot {
         if (!this.game.husky) {
             this.game.husky = new Husky(this.game, this.x, this.y, dx * power, dy * power);
             this.wobbleStartTime = performance.now();
+            this.game.shotHit = false; // Reset hit tracking for this shot
         }
     }
 

@@ -280,11 +280,11 @@ canvas {
 }
 
 
-/* Override overlay alignment for leaderboard to use bottom space */
+/* Override overlay alignment for leaderboard */
 #leaderboard-screen {
-    justify-content: flex-end;
-    padding-bottom: 60px;
-    /* Leave space for "Close" button and bottom edge */
+    justify-content: flex-start;
+    padding-top: 10px;
+    padding-bottom: 20px;
 }
 
 /* Leaderboard */
