@@ -489,12 +489,12 @@ class AudioManager {
         osc2.frequency.value = freq * 1.005; // Slight detune for thickness without wobble
 
         const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(0.15, time); // Boosted as Tri/Sine have less perceived volume
-        gain.gain.exponentialRampToValueAtTime(0.01, time + length);
+        gain.gain.setValueAtTime(0.0505, time); // Boosted as Tri/Sine have less perceived volume
+        gain.gain.exponentialRampToValueAtTime(0.00005, time + length);
 
         const filter = this.ctx.createBiquadFilter();
         filter.type = 'lowpass';
-        filter.frequency.value = 1500; // Mellow cutoff
+        filter.frequency.value = 550; // Mellow cutoff
 
         osc1.connect(filter);
         osc2.connect(filter);
@@ -530,8 +530,8 @@ class AudioManager {
             osc.type = 'square';
             osc.frequency.value = chordRoot * 4;
             const gain = this.ctx.createGain();
-            gain.gain.setValueAtTime(0.1, time);
-            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.15);
+            gain.gain.setValueAtTime(0.005, time);
+            gain.gain.exponentialRampToValueAtTime(0.0075, time + 0.15);
             osc.connect(gain);
             gain.connect(this.delayNode);
             osc.start(time);
