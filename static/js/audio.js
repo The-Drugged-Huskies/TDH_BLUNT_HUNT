@@ -1,6 +1,7 @@
 /**
  * audio.js
  * Handles procedural sound effects using Web Audio API.
+ * Features: Procedural Reggae Soundtrack, Dub Effects, Song Structure.
  */
 class AudioManager {
     constructor() {
@@ -115,7 +116,7 @@ class AudioManager {
         this.playTone(60, 'square', 0.3, 0.08);
     }
 
-    // --- Music Sequencer ---
+    // --- Music Sequencer with Dub FX ---
 
     initMusic() {
         this.tempo = 120;
@@ -128,72 +129,104 @@ class AudioManager {
 
         // Loop Length: 8 Bars = 32 beats = 128 16th notes
         this.loopLength = 128;
+
+        // Setup Dub Delay
+        this.createDubDelay();
+    }
+
+    createDubDelay() {
+        // Create Delay Chain: Source -> Delay -> Feedback -> Source
+        this.delayNode = this.ctx.createDelay();
+        this.delayNode.delayTime.value = 0.375; // 3/16th note delay (dotted eighth feel) at 120BPM
+        // 60/120 = 0.5s per beat. 16th = 0.125s. 3*0.125 = 0.375s.
+
+        this.feedbackGain = this.ctx.createGain();
+        this.feedbackGain.gain.value = 0.6; // 60% feedback
+
+        // Filter for "Tape Dub" sound (High pass + Low pass)
+        this.delayFilter = this.ctx.createBiquadFilter();
+        this.delayFilter.type = 'lowpass';
+        this.delayFilter.frequency.value = 1200; // Darken the repeats
+
+        // Chain
+        this.delayNode.connect(this.feedbackGain);
+        this.feedbackGain.connect(this.delayFilter);
+        this.delayFilter.connect(this.delayNode); // Feedback Loop
+
+        // Output to master
+        this.delayNode.connect(this.ctx.destination);
     }
 
     generateComposition() {
-        // --- 1. Choose Chord Progression (C Major) ---
-        // I = C(523), ii = Dm(587), iii = Em(659), IV = F(698), V = G(783), vi = Am(880)
-        // Root Frequencies:
-        const chords = {
-            'I': 523.25, 'ii': 587.33, 'iii': 659.25, 'IV': 698.46, 'V': 783.99, 'vi': 880.00
-        };
-        const progressions = [
-            ['I', 'IV', 'V', 'IV'], // Classic I-IV-V
-            ['I', 'vi', 'IV', 'V'], // 50s / Doo-wop Reggae
-            ['ii', 'V', 'I', 'I'],  // ii-V-I
-            ['I', 'I', 'IV', 'V']
-        ];
-        // Pick one
-        const prog = progressions[Math.floor(Math.random() * progressions.length)];
+        // Define Sections
+        this.verse = this.generateSection('verse');
+        this.chorus = this.generateSection('chorus');
 
-        // Map 8 bars to the 4 chords (2 bars per chord)
-        // Bar 0-1: Chord[0], Bar 2-3: Chord[1], etc.
-        this.chordMap = [];
-        for (let i = 0; i < 8; i++) {
-            this.chordMap.push(chords[prog[i % 4]]);
+        this.currentSection = 'verse'; // Start with Verse
+    }
+
+    generateSection(type) {
+        // Basic Chords
+        const C = 523.25, Dm = 587.33, Em = 659.25, F = 698.46, G = 783.99, Am = 880.00;
+        const chords = { 'I': C, 'ii': Dm, 'iii': Em, 'IV': F, 'V': G, 'vi': Am };
+
+        let prog;
+        if (type === 'verse') {
+            const verseProgs = [
+                ['I', 'ii'], // Classic 2-chord skank
+                ['I', 'V'],
+                ['ii', 'iii'],
+                ['I', 'vi', 'ii', 'V']
+            ];
+            prog = verseProgs[Math.floor(Math.random() * verseProgs.length)];
+        } else {
+            // Chorus adds energy (IV, V)
+            const chorusProgs = [
+                ['IV', 'V', 'I', 'I'],
+                ['IV', 'I', 'V', 'I'],
+                ['vi', 'IV', 'I', 'V']
+            ];
+            prog = chorusProgs[Math.floor(Math.random() * chorusProgs.length)];
         }
 
-        // --- 2. Generate Bassline ---
-        this.bassLine = new Array(this.loopLength).fill(null);
+        // Expand prog to 8 bars
+        // Use modulus to cycle through the progression
+        const chordMap = [];
+        for (let i = 0; i < 8; i++) {
+            const chordName = prog[i % prog.length];
+            chordMap.push(chords[chordName]);
+        }
 
-        // Pattern Types:
-        // 1. One Drop: Root on Beat 3 (index 8, 24...)
-        // 2. Steppers: Root on all 4 beats
-        // 3. Walking: Arpeggios
-        const patternType = Math.random() > 0.5 ? 'onedrop' : 'simple';
+        // Generate Bass & Skank for this section
+        const bassLine = new Array(128).fill(null);
+        const skankPattern = new Array(128).fill(0);
+
+        const patternType = Math.random() > 0.5 ? 'onedrop' : 'steppers';
 
         for (let bar = 0; bar < 8; bar++) {
-            const root = this.chordMap[bar] / 4; // Shift down 2 octaves for bass (C3 approx 130)
-            const beatOffset = bar * 16;
+            const root = chordMap[bar] / 4; // Bass Octave
+            const offset = bar * 16;
 
+            // Bass
             if (patternType === 'onedrop') {
-                // Beat 3 (index 8) is heavy. Beat 1 is empty or light.
-                this.bassLine[beatOffset + 8] = { note: root, len: 0.8 }; // Beat 3
-                // Little skip note at end of bar?
-                if (Math.random() > 0.5)
-                    this.bassLine[beatOffset + 14] = { note: root * 1.5, len: 0.2 }; // Perfect 5th
+                bassLine[offset + 8] = { note: root, len: 0.8 }; // Beat 3
+                // Variation
+                if (Math.random() > 0.6) bassLine[offset + 14] = { note: root * 1.5, len: 0.2 };
             } else {
-                // Simple roots on 1 and 3
-                this.bassLine[beatOffset] = { note: root, len: 0.8 }; // Beat 1
-                this.bassLine[beatOffset + 8] = { note: root, len: 0.8 }; // Beat 3
-
-                // Variation on beat 4?
-                if (Math.random() > 0.3) {
-                    this.bassLine[beatOffset + 12] = { note: root * 1.25, len: 0.4 }; // Major 3rd
-                }
+                // Steppers (Four on the floor feel)
+                bassLine[offset] = { note: root, len: 0.4 };
+                bassLine[offset + 4] = { note: root, len: 0.4 };
+                bassLine[offset + 8] = { note: root, len: 0.4 };
+                bassLine[offset + 12] = { note: root, len: 0.4 };
             }
+
+            // Skank (Beats 2 & 4)
+            skankPattern[offset + 4] = 1;
+            skankPattern[offset + 12] = 1;
+            if (Math.random() > 0.9) skankPattern[offset + 14] = 1; // Rare double skank
         }
 
-        // --- 3. Generate Skank Pattern ---
-        // Always on off-beats (beats 2 and 4 -> 16th indices 4, 12)
-        this.skankPattern = new Array(this.loopLength).fill(0);
-        for (let i = 0; i < this.loopLength; i += 16) {
-            this.skankPattern[i + 4] = 1; // Beat 2
-            this.skankPattern[i + 12] = 1; // Beat 4
-
-            // Occasional double chop?
-            if (Math.random() > 0.8) this.skankPattern[i + 14] = 1;
-        }
+        return { chordMap, bassLine, skankPattern };
     }
 
     startMusic() {
@@ -218,8 +251,6 @@ class AudioManager {
     scheduler() {
         if (!this.isPlaying) return;
 
-        // While there are notes that will need to play before the next interval, 
-        // schedule them and advance the pointer.
         while (this.nextNoteTime < this.ctx.currentTime + this.scheduleAheadTime) {
             this.scheduleNote(this.current16thNote, this.nextNoteTime);
             this.nextNote();
@@ -230,44 +261,65 @@ class AudioManager {
 
     nextNote() {
         const secondsPerBeat = 60.0 / this.tempo;
-        this.nextNoteTime += 0.25 * secondsPerBeat; // Advance by a 16th note
+        this.nextNoteTime += 0.25 * secondsPerBeat; // Advance by 16th note
         this.current16thNote++;
+
+        // Loop and Section Switching
         if (this.current16thNote === this.loopLength) {
             this.current16thNote = 0;
+            // Toggle Section
+            this.currentSection = (this.currentSection === 'verse') ? 'chorus' : 'verse';
         }
     }
 
     scheduleNote(beatNumber, time) {
+        // Use data from current section
+        const sectionData = this.currentSection === 'chorus' ? this.chorus : this.verse;
+
         // --- 1. Drums ---
-        // Simple One Drop Logic
-        // 16th index in a bar (0-15)
         const stepInBar = beatNumber % 16;
 
-        if (stepInBar % 4 === 0) { // Quarter notes hihats
+        // Hats
+        if (stepInBar % 4 === 0) {
             this.playNoise(time, 0.03, 2000 + Math.random() * 1000);
         }
 
-        // Kick / Rim on Beat 3 (index 8)
-        if (stepInBar === 8) {
+        // Kick / Rim (One Drop logic primarily on Beat 3)
+        // If Chorus, maybe drive harder (kick on 1 too)
+        if (this.currentSection === 'chorus' && stepInBar === 0) {
+            this.playKick(time); // Driving kick
+        }
+
+        if (stepInBar === 8) { // Beat 3 (Standard One Drop)
             this.playKick(time);
-            this.playNoise(time, 0.08, 900);
+            this.playNoise(time, 0.08, 900); // Snare
+
+            // Random Dub Throw on Snare
+            if (Math.random() > 0.7) {
+                this.playDubThrow(time, 900);
+            }
         }
 
         // --- 2. Bass ---
-        const bassNote = this.bassLine[beatNumber];
+        const bassNote = sectionData.bassLine[beatNumber];
         if (bassNote) {
             this.playBass(time, bassNote.note, bassNote.len);
         }
 
         // --- 3. Skank (Chords) ---
-        if (this.skankPattern[beatNumber]) {
-            // Determine Chord from Bar index
+        if (sectionData.skankPattern[beatNumber]) {
             const barIndex = Math.floor(beatNumber / 16);
-            // Default to C if undefined (shouldn't happen)
-            const root = this.chordMap[barIndex] || 523.25;
+            const root = sectionData.chordMap[barIndex] || 523.25;
             this.playSkank(time, root);
+
+            // Random Dub Throw on Skank
+            if (Math.random() > 0.8) {
+                this.playDubThrow(time, null, root); // Skank throw
+            }
         }
     }
+
+    // --- Sound Generators with sends to Delay ---
 
     playKick(time) {
         const osc = this.ctx.createOscillator();
@@ -296,10 +348,13 @@ class AudioManager {
         filter.frequency.value = filterFreq;
         const gain = this.ctx.createGain();
         gain.gain.value = 0.1;
+
         noise.connect(filter);
         filter.connect(gain);
         gain.connect(this.ctx.destination);
+
         noise.start(time);
+        return { noise, gain }; // Return for potential processing
     }
 
     playBass(time, freq, length) {
@@ -307,7 +362,7 @@ class AudioManager {
         osc.type = 'triangle';
         const gain = this.ctx.createGain();
         osc.frequency.setValueAtTime(freq, time);
-        gain.gain.setValueAtTime(0.4, time); // Pretty loud
+        gain.gain.setValueAtTime(0.4, time);
         gain.gain.linearRampToValueAtTime(0.01, time + length);
         osc.connect(gain);
         gain.connect(this.ctx.destination);
@@ -316,10 +371,8 @@ class AudioManager {
     }
 
     playSkank(time, rootFreq) {
-        // Staccato Stab
         const duration = 0.1;
-        // 3 notes
-        [rootFreq, rootFreq * 1.2599, rootFreq * 1.4983].forEach(freq => { // Approx Major 3rd, 5th
+        [rootFreq, rootFreq * 1.2599, rootFreq * 1.4983].forEach(freq => {
             const osc = this.ctx.createOscillator();
             osc.type = 'square';
             const gain = this.ctx.createGain();
@@ -331,5 +384,53 @@ class AudioManager {
             osc.start(time);
             osc.stop(time + duration);
         });
+    }
+
+    playDubThrow(time, noiseFreq, chordRoot) {
+        if (!this.delayNode) return;
+
+        // Create a separate sound source just for the delay line
+        if (noiseFreq) {
+            // Snare Throw
+            const bufferSize = this.ctx.sampleRate * 0.15;
+            const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+            const noise = this.ctx.createBufferSource();
+            noise.buffer = buffer;
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'bandpass'; // Bandpass for telephone/dub effect
+            filter.frequency.value = noiseFreq;
+
+            const gain = this.ctx.createGain();
+            gain.gain.value = 0.3; // Send level
+
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.delayNode); // SEND TO DELAY ONLY (or dest too if we want direct sound)
+
+            noise.start(time);
+        } else if (chordRoot) {
+            // Chord Throw (Single Blip)
+            const osc = this.ctx.createOscillator();
+            osc.type = 'sawtooth';
+            osc.frequency.value = chordRoot * 2; // High beep
+
+            const gain = this.ctx.createGain();
+            gain.gain.setValueAtTime(0.1, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'highpass';
+            filter.frequency.value = 2000;
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.delayNode); // Send to Delay
+
+            osc.start(time);
+            osc.stop(time + 0.1);
+        }
     }
 }
