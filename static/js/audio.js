@@ -126,8 +126,9 @@ class AudioManager {
     // --- Music Sequencer with Motif Engine ---
 
     initMusic() {
-        // Randomize Tempo: 116 - 122 BPM
-        this.tempo = 116 + Math.floor(Math.random() * 6);
+        // Randomize Tempo: 120 - 135 BPM for Steppers/Rockers, or keep it classic Dub (130-140 effectively half-time feel or 70-80 actual)
+        // Let's stick to the current range but allow for some variety.
+        this.tempo = 116 + Math.floor(Math.random() * 8);
 
         // Randomize Mode: Major (Ring of Fire) or Minor (Dark Roots)
         this.mode = Math.random() > 0.5 ? 'MAJOR' : 'MINOR';
@@ -144,7 +145,7 @@ class AudioManager {
             'Bb': 233.08
         };
 
-        console.log(`Music Initialized: MOOD=${this.mode}, BPM=${this.tempo}, ROOT=${this.rootFreq}`);
+        console.log(`Music Initialized: MOOD=${this.mode}, STYLE=${this.drumStyle}, BPM=${this.tempo}, ROOT=${this.rootFreq}`);
 
         this.lookahead = 25.0;
         this.scheduleAheadTime = 0.1;
@@ -314,14 +315,23 @@ class AudioManager {
                     if (Math.random() > 0.5) bassLine[offset + 12] = { note: root, len: 0.4 };
                 }
             } else if (style === 'dub') {
-                // Dub Style: Play with space, emphasis on beat 3 (step 8)
-                if (bar % 2 === 0) {
-                    bassLine[offset] = { note: root, len: 0.4 }; // Beat 1
-                    bassLine[offset + 8] = { note: root, len: 1.2 }; // Beat 3 (Drop)
+                // Dub Style: Play with space
+                // Randomly switch between Steppers-ish (four on floor support) and One Drop (beat 3 focus) bass behavior
+                if (Math.random() > 0.5) {
+                    // Steppers-ish: Bass dances around the implied 4/4
+                    bassLine[offset + 2] = { note: root, len: 0.4 };
+                    bassLine[offset + 8] = { note: root, len: 0.8 };
+                    bassLine[offset + 14] = { note: root * fifth, len: 0.2 };
                 } else {
-                    bassLine[offset + 4] = { note: root * fifth, len: 0.4 }; // Beat 2
-                    bassLine[offset + 8] = { note: root * octave, len: 0.8 }; // Beat 3
-                    if (Math.random() > 0.6) bassLine[offset + 14] = { note: root, len: 0.2 }; // Pickup
+                    // One Drop Style Bass (often hits 1 heavy or avoids it)
+                    if (bar % 2 === 0) {
+                        bassLine[offset] = { note: root, len: 0.4 }; // Beat 1
+                        bassLine[offset + 8] = { note: root, len: 1.2 }; // Beat 3 (Drop)
+                    } else {
+                        bassLine[offset + 4] = { note: root * fifth, len: 0.4 }; // Beat 2
+                        bassLine[offset + 8] = { note: root * octave, len: 0.8 }; // Beat 3
+                        if (Math.random() > 0.6) bassLine[offset + 14] = { note: root, len: 0.2 }; // Pickup
+                    }
                 }
             }
 
@@ -402,20 +412,73 @@ class AudioManager {
     scheduleNote(beatNumber, time) {
         const sectionData = this.currentSection === 'chorus' ? this.chorus : this.verse;
         const stepInBar = beatNumber % 16;
+        const barInLoop = Math.floor(beatNumber / 16);
 
-        // --- 1. Drums ---
+        // --- 1. Drums (Classic Foundation + Dub Fills) ---
+
+        let playKick = false;
+        let playSnare = false; // The noisy snare
+        let playRim = false;   // The new Dub Rimshot
+
+        // Is this a fill bar? (Last bar of every 4 or 8 bars)
+        const isFillBar = (barInLoop === 3 || barInLoop === 7);
+
         if (stepInBar % 4 === 0) {
-            this.playNoise(time, 0.03, 3000);
+            this.playNoise(time, 0.03, 3000); // Hats
         }
 
-        if (this.currentSection === 'chorus' && stepInBar === 0) {
-            this.playKick(time);
+        // --- Base Rhythm (Restored) ---
+        if (!isFillBar) {
+            // Chorus: Kick on 1
+            if (this.currentSection === 'chorus' && stepInBar === 0) {
+                playKick = true;
+            }
+            // All: Kick + Snare on 3 (One Drop / Backbeat)
+            if (stepInBar === 8) {
+                playKick = true;
+                playSnare = true;
+                if (Math.random() > 0.7) this.playDubThrow(time, 800); // Original dub throw
+            }
         }
 
-        if (stepInBar === 8) {
-            this.playKick(time);
+        // --- Fills (The "New Beat" Styles injected) ---
+        else {
+            // Random Fill Style
+            // We use the barIndex + random seed concept to keep it consistent for the bar? 
+            // Or just random for now since it's procedural.
+            const fillType = Math.random();
+
+            if (fillType < 0.33) {
+                // "Steppers" Fill (Four on Floor)
+                if (stepInBar % 4 === 0) playKick = true;
+                if (stepInBar === 8) playRim = true;
+                if (stepInBar === 12 || stepInBar === 14) playRim = (Math.random() > 0.5); // End roll
+            } else if (fillType < 0.66) {
+                // "Rockers" / "Rimshot" Fill
+                if (stepInBar === 0) playKick = true;
+                if (stepInBar === 8) { playKick = true; playRim = true; }
+                if (stepInBar === 11) playRim = true; // Syncopated
+                if (stepInBar === 14) playRim = true;
+
+                if (stepInBar === 14) this.playDubThrow(time, 1200); // Echo out
+            } else {
+                // "Machine Gun" Snare Fill
+                if (stepInBar % 2 === 0) playSnare = true;
+                if (stepInBar > 8) playRim = true;
+            }
+        }
+
+        // Execution
+        if (playKick) this.playKick(time);
+
+        if (playSnare) {
             this.playNoise(time, 0.08, 800);
-            if (Math.random() > 0.7) this.playDubThrow(time, 800);
+        }
+
+        if (playRim) {
+            this.playRimshot(time);
+            // Occasional echo on rims
+            if (Math.random() > 0.8) this.playDubThrow(time, 1200);
         }
 
         // --- 2. Bass ---
@@ -429,6 +492,7 @@ class AudioManager {
             const barIndex = Math.floor(beatNumber / 16);
             const chord = sectionData.chordMap[barIndex] || { freq: 196.00, isMinor: false };
             this.playSkank(time, chord);
+            // Occasional muted chip/chop
             if (Math.random() > 0.8) this.playDubThrow(time, null, chord.freq);
         }
 
@@ -445,16 +509,62 @@ class AudioManager {
     playKick(time) {
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
-        osc.frequency.setValueAtTime(150, time);
-        osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.5);
+        osc.frequency.setValueAtTime(120, time); // Thuddier
+        osc.frequency.exponentialRampToValueAtTime(40, time + 0.5); // Deeper drop
 
-        const masterVol = 0.8 * this.musicVolume;
+        const masterVol = 0.9 * this.musicVolume;
         gain.gain.setValueAtTime(masterVol, time);
-        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
+        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
         osc.connect(gain);
         gain.connect(this.ctx.destination);
         osc.start(time);
         osc.stop(time + 0.5);
+    }
+
+    playRimshot(time, volScale = 1.0) {
+        // Natural Velocity Variation
+        const velocity = 0.8 + Math.random() * 0.4; // +/- 20% variation
+        const effectiveVol = volScale * velocity;
+
+        // High pitched resonant tone + noise knock
+        // 1. Tonal Knock
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square'; // Woody
+        osc.frequency.setValueAtTime(400, time);
+        osc.frequency.exponentialRampToValueAtTime(100, time + 0.05);
+
+        // Reduced base volume (was 0.6)
+        gain.gain.setValueAtTime(0.25 * this.musicVolume * effectiveVol, time);
+        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        // 2. Crack/Slap
+        const noiseBuffer = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.05, this.ctx.sampleRate);
+        const data = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = noiseBuffer;
+
+        const noiseFilter = this.ctx.createBiquadFilter();
+        noiseFilter.type = 'highpass';
+        noiseFilter.frequency.value = 1500;
+
+        const noiseGain = this.ctx.createGain();
+        // Reduced base volume (was 0.5)
+        noiseGain.gain.setValueAtTime(0.2 * this.musicVolume * effectiveVol, time);
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+
+        noise.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(this.ctx.destination);
+
+        osc.start(time);
+        osc.stop(time + 0.05);
+        noise.start(time);
     }
 
     playNoise(time, duration, filterFreq) {
@@ -483,7 +593,7 @@ class AudioManager {
 
         const filter = this.ctx.createBiquadFilter();
         filter.type = 'lowpass';
-        filter.Q.value = 5;
+        filter.Q.value = 2;
 
         // Deeper Filter Envelope
         filter.frequency.setValueAtTime(80, time); // Start lower
