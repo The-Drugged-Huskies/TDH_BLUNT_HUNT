@@ -279,6 +279,14 @@ canvas {
     color: #000;
 }
 
+
+/* Override overlay alignment for leaderboard to use bottom space */
+#leaderboard-screen {
+    justify-content: flex-end;
+    padding-bottom: 60px;
+    /* Leave space for "Close" button and bottom edge */
+}
+
 /* Leaderboard */
 #leaderboard-list {
     width: 80%;

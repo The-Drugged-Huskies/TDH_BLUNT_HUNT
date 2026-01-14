@@ -315,10 +315,10 @@ class Game {
         const x = Math.random() * (this.width - 100) + 50;
 
         // Dynamic Spawn Range
-        // Keep blunts above the HUD area
-        const topLimit = 60; // Clear top header
-        const bottomLimit = this.height - 80; // Clear HUD area significantly
-        const spawnRange = Math.max(50, bottomLimit - topLimit);
+        // Keep blunts strictly above the sling (which is at height - 90)
+        const topLimit = 50; // Clear top header
+        const bottomLimit = this.height - 150; // Keep well above sling (safe zone for amplitude)
+        const spawnRange = Math.max(30, bottomLimit - topLimit);
 
         const y = Math.random() * spawnRange + topLimit;
         this.blunts.push(new Blunt(this, x, y, this.bluntLifeTime, this.speedMultiplier));
@@ -329,8 +329,8 @@ class Game {
         const dx = circle1.x - circle2.x;
         const dy = circle1.y - circle2.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        // Reduce radius for tighter hitboxes
-        return distance < (circle1.radius * 0.8 + circle2.radius * 0.8);
+        // Increase radius for easier hits (1.2x)
+        return distance < (circle1.radius * 1.2 + circle2.radius * 1.2);
     }
     async showLeaderboard() {
         this.leaderboardScreen.classList.remove('hidden');
@@ -386,10 +386,7 @@ class Slingshot {
         this.updatePosition();
         this.isDragging = false;
         this.dragX = this.x;
-        this.dragY = this.y;
-        this.isDragging = false;
-        this.dragX = this.x;
-        this.dragY = this.y;
+        this.dragY = this.y - 40;
         this.maxPull = 150;
 
         // Sprite
@@ -401,6 +398,8 @@ class Slingshot {
         this.huskySprite = new Sprite({
             image: this.game.assets['husky']
         });
+
+        this.wobbleStartTime = 0;
     }
 
     updatePosition() {
@@ -408,6 +407,11 @@ class Slingshot {
         // Position visually on the "grass" which is bottom of screen behind HUD
         // Since Canvas is now full height (overlaying HUD), we position it lower
         this.y = this.game.height - 90;
+
+        if (!this.isDragging) {
+            this.dragX = this.x;
+            this.dragY = this.y - 40;
+        }
     }
 
     onMouseDown(x, y) {
@@ -420,7 +424,8 @@ class Slingshot {
         const gameY = (y - rect.top) * scaleY;
 
         const dist = Math.hypot(gameX - this.x, gameY - this.y);
-        if (dist < 40) { // Interaction radius
+        // Interaction radius increased for easier grabbing (covers the husky position)
+        if (dist < 80) {
             this.isDragging = true;
             this.dragX = gameX;
             this.dragY = gameY;
@@ -456,7 +461,7 @@ class Slingshot {
             this.isDragging = false;
             this.shoot();
             this.dragX = this.x;
-            this.dragY = this.y;
+            this.dragY = this.y - 40;
         }
     }
 
@@ -467,6 +472,7 @@ class Slingshot {
 
         if (!this.game.husky) {
             this.game.husky = new Husky(this.game, this.x, this.y, dx * power, dy * power);
+            this.wobbleStartTime = performance.now();
         }
     }
 
@@ -479,9 +485,37 @@ class Slingshot {
         ctx.strokeStyle = '#333';
         ctx.lineWidth = 6;
         ctx.beginPath();
-        ctx.moveTo(this.x - 25, this.y - 40); // Left fork tip approx
-        ctx.lineTo(this.dragX, this.dragY);
-        ctx.lineTo(this.x + 25, this.y - 40); // Right fork tip approx
+        const leftTipX = this.x - 20;
+        const leftTipY = this.y - 38;
+        const rightTipX = this.x + 20;
+        const rightTipY = this.y - 38;
+
+        if (this.isDragging) {
+            // Taut Lines (Dragging)
+            ctx.moveTo(leftTipX, leftTipY);
+            ctx.lineTo(this.dragX, this.dragY);
+            ctx.lineTo(rightTipX, rightTipY);
+        } else {
+            // Relaxed / Drooping (Idle or Empty)
+            ctx.moveTo(leftTipX, leftTipY);
+
+            let controlY = this.y - 20; // Base relaxed depth
+
+            // Add wobble if Empty (Husky flying)
+            if (this.game.husky) {
+                const timeSinceRelease = performance.now() - this.wobbleStartTime;
+                if (timeSinceRelease < 1000) {
+                    const frequency = 0.02;
+                    const decay = 0.005;
+                    const amplitude = 30;
+                    const wobbleY = amplitude * Math.exp(-decay * timeSinceRelease) * Math.sin(frequency * timeSinceRelease);
+                    controlY += wobbleY;
+                }
+            }
+
+            // Curve down to the center
+            ctx.quadraticCurveTo(this.x, controlY, rightTipX, rightTipY);
+        }
         ctx.stroke();
 
         // Draw Sprite Base
@@ -492,7 +526,8 @@ class Slingshot {
         if (!this.game.husky) {
             // Determine position: drag position if dragging, or center if idle
             const hx = this.isDragging ? this.dragX : this.x;
-            const hy = this.isDragging ? this.dragY : this.y - 40; // Approx pouch height if idle
+            // Align idle Y with the relaxed curve bottom (y - 20)
+            const hy = this.isDragging ? this.dragY : this.y - 30;
 
             // Draw slightly smaller sized husky for the sling
             this.huskySprite.draw(ctx, hx, hy, 60, 60);
@@ -551,7 +586,8 @@ class Blunt {
 
         // Speed increases with multiplier
         this.speed = (Math.random() * 2 + 1) * speedMultiplier;
-        this.amplitude = Math.random() * 50 + 20;
+        // Reduced amplitude to prevent swooping too low
+        this.amplitude = Math.random() * 20 + 20;
         this.frequency = Math.random() * 0.005 + 0.002;
         this.direction = Math.random() > 0.5 ? 1 : -1;
     }
