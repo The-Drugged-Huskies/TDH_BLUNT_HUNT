@@ -1,0 +1,197 @@
+:root {
+    --bg-color: #0b0b0b;
+    --accent-color: #00ff9d;
+    /* Neon Green */
+    --accent-secondary: #bd00ff;
+    /* Neon Purple */
+    --text-color: #ffffff;
+    --font-main: 'Inter', sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-main);
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#game-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-width: 1920px;
+    max-height: 1080px;
+    background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%);
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+    overflow: hidden;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    /* Prevent default touch actions like scrolling */
+}
+
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    /* Let clicks pass through to canvas */
+}
+
+#score-board {
+    position: absolute;
+    top: 20px;
+    left: 30px;
+    font-size: 1.5rem;
+    font-weight: 900;
+    text-shadow: 0 0 10px rgba(0, 255, 157, 0.5);
+    display: flex;
+    gap: 40px;
+    pointer-events: none;
+    /* Make sure it doesn't block canvas either */
+}
+
+#score-board {
+    position: absolute;
+    top: 20px;
+    left: 30px;
+    font-size: 1.5rem;
+    font-weight: 900;
+    text-shadow: 0 0 10px rgba(0, 255, 157, 0.5);
+    display: flex;
+    gap: 40px;
+    pointer-events: none;
+    /* Make sure it doesn't block canvas either */
+}
+
+#wallet-container {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    z-index: 100;
+    pointer-events: all;
+}
+
+#balance-display {
+    font-weight: 700;
+    color: var(--accent-color);
+    text-shadow: 0 0 5px rgba(0, 255, 157, 0.5);
+    font-size: 1rem;
+}
+
+#balance-display.hidden {
+    display: none;
+}
+
+.btn-wallet {
+    padding: 10px 20px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-color);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--accent-color);
+    border-radius: 30px;
+    cursor: pointer;
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+}
+
+.btn-wallet:hover {
+    background: var(--accent-color);
+    color: var(--bg-color);
+    box-shadow: 0 0 15px var(--accent-color);
+}
+
+.btn-wallet.connected {
+    border-color: var(--accent-secondary);
+    color: var(--accent-secondary);
+}
+
+.btn-wallet.connected:hover {
+    background: var(--accent-secondary);
+    color: var(--text-color);
+    box-shadow: 0 0 15px var(--accent-secondary);
+}
+
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    pointer-events: all;
+    /* Re-enable clicks for buttons */
+    transition: opacity 0.3s ease;
+}
+
+.overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.title {
+    font-size: 5rem;
+    font-weight: 900;
+    background: linear-gradient(45deg, var(--accent-color), var(--accent-secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 30px rgba(189, 0, 255, 0.3);
+    margin-bottom: 1rem;
+    letter-spacing: -2px;
+}
+
+.subtitle {
+    font-size: 1.2rem;
+    color: #cccccc;
+    margin-bottom: 3rem;
+    font-weight: 400;
+}
+
+.btn-primary {
+    padding: 15px 40px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--bg-color);
+    background: var(--accent-color);
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
+    box-shadow: 0 0 20px rgba(0, 255, 157, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.btn-primary:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 30px rgba(0, 255, 157, 0.6);
+    background: #fff;
+}
+
+.btn-primary:active {
+    transform: scale(0.95);
+}

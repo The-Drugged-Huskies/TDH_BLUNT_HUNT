@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blunt Hunt - Dogechain Edition</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"
+        type="application/javascript"></script>
+</head>
+
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-layer">
+            <div class="status-bar">
+                <div id="score-board">
+                    <span>SCORE: <span id="score">0</span></span>
+                    <span>TIME: <span id="timer">00:00</span></span>
+                </div>
+                <div id="wallet-container">
+                    <span id="balance-display" class="hidden">0.0000 DOGE</span>
+                    <button id="connect-wallet-btn" class="btn-wallet">Connect Wallet</button>
+                </div>
+            </div>
+            <div id="start-screen" class="overlay active">
+                <h1 class="title">BLUNT HUNT</h1>
+                <p class="subtitle">Drag & Release to Launch the Husky!</p>
+                <button id="start-btn" class="btn-primary">START HUNT</button>
+            </div>
+            <div id="game-over-screen" class="overlay hidden">
+                <h1 class="title">GAME OVER</h1>
+                <p class="subtitle">Final Score: <span id="final-score">0</span></p>
+                <button id="restart-btn" class="btn-primary">PLAY AGAIN</button>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/wallet.js') }}"></script>
+</body>
+
+</html>
