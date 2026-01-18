@@ -133,6 +133,18 @@ class AudioManager {
         // Randomize Mode: Major (Ring of Fire) or Minor (Dark Roots)
         this.mode = Math.random() > 0.5 ? 'MAJOR' : 'MINOR';
 
+        // Randomize Progression Style (0, 1, or 2)
+        this.progressionStyle = Math.random();
+        this.progStyleName = "Standard";
+
+        if (this.mode === 'MAJOR') {
+            if (this.progressionStyle < 0.33) this.progStyleName = "Classic I-IV-V";
+            else if (this.progressionStyle < 0.66) this.progStyleName = "Anthemic (No Woman No Cry)";
+            else this.progStyleName = "Turnaround (Three Little Birds)";
+        } else {
+            this.progStyleName = "Dark Roots";
+        }
+
         // Root Frequency (Fixed to G for now, but calculated relatively below)
         this.rootFreq = 196.00; // Default G
         this.currentKey = 'G';
@@ -145,7 +157,7 @@ class AudioManager {
             'Bb': 233.08
         };
 
-        console.log(`Music Initialized: MOOD=${this.mode}, STYLE=${this.drumStyle}, BPM=${this.tempo}, ROOT=${this.rootFreq}`);
+        console.log(`Music Initialized: MOOD=${this.mode}, STYLE=${this.progStyleName}, BPM=${this.tempo}, ROOT=${this.rootFreq}`);
 
         this.lookahead = 25.0;
         this.scheduleAheadTime = 0.1;
@@ -236,6 +248,7 @@ class AudioManager {
         // These multipliers define the distances from the root note
         const fourth = root * 1.3348; // IV chord
         const fifth = root * 1.4983;  // V chord
+        const maj6th = root * 1.6818; // vi chord (Natural 6th - relative minor root)
         const min6th = root * 1.5874; // bVI chord
         const min7th = root * 1.7818; // bVII chord
 
@@ -243,16 +256,37 @@ class AudioManager {
         let progNames = [];
 
         if (this.mode === 'MAJOR') {
-            // Ring of Fire 
+            // Ring of Fire (Extended)
             chords = {
                 'I': { freq: root, isMinor: false },
                 'IV': { freq: fourth, isMinor: false },
-                'V': { freq: fifth, isMinor: false }
+                'V': { freq: fifth, isMinor: false },
+                'vi': { freq: maj6th, isMinor: true }
             };
-            if (type === 'verse') {
-                progNames = ['I', 'IV', 'I', 'I', 'I', 'IV', 'I', 'I'];
+
+            // Use the style selected in initMusic
+            const r = this.progressionStyle;
+            if (r < 0.33) {
+                // Classic I-IV-V
+                if (type === 'verse') {
+                    progNames = ['I', 'IV', 'I', 'I', 'I', 'IV', 'I', 'I'];
+                } else {
+                    progNames = ['V', 'IV', 'I', 'I', 'V', 'IV', 'I', 'I'];
+                }
+            } else if (r < 0.66) {
+                // "No Woman No Cry" / "Let it Be" Style (I - V - vi - IV)
+                if (type === 'verse') {
+                    progNames = ['I', 'V', 'vi', 'IV', 'I', 'V', 'vi', 'IV'];
+                } else {
+                    progNames = ['V', 'vi', 'IV', 'I', 'V', 'vi', 'I', 'I'];
+                }
             } else {
-                progNames = ['V', 'IV', 'I', 'I', 'V', 'IV', 'I', 'I'];
+                // "Three Little Birds" / "Stir It Up" Style (I - IV - I) + Turnaround
+                if (type === 'verse') {
+                    progNames = ['I', 'I', 'IV', 'IV', 'I', 'I', 'V', 'IV']; // Turnaround at end
+                } else {
+                    progNames = ['V', 'V', 'I', 'I', 'IV', 'V', 'I', 'I'];
+                }
             }
         } else {
             // Dark Roots 
@@ -281,6 +315,7 @@ class AudioManager {
 
         const bassStyles = ['sparse', 'deep', 'dub'];
         const style = bassStyles[Math.floor(Math.random() * bassStyles.length)];
+        console.log(`- GENERATING ${type.toUpperCase()}: Bass Style = ${style}`);
 
         // MOTIF Application
         // Generate one good motif for this entire section
