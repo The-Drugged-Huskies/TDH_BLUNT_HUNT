@@ -224,7 +224,7 @@ canvas {
     align-items: center;
     pointer-events: auto;
     text-align: center;
-    z-index: 100;
+    z-index: 250;
 }
 
 .overlay.hidden {
@@ -426,16 +426,7 @@ canvas {
 }
 
 /* UI Layer overrides */
-#ui-layer {
-    position: absolute;
-    top: 40px;
-    /* Below Header */
-    left: 0;
-    width: 100%;
-    height: calc(100% - 100px);
-    /* Subtract Header(40) + HUD(60) */
-    pointer-events: none;
-}
+
 
 /* Timer */
 #timer-display {

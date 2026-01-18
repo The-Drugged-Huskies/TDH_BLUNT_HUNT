@@ -1,50 +1,40 @@
-# TDH BLUNT HUNT
+# The Blunt Hunt
 
-**TDH BLUNT HUNT** is a retro-style arcade game built for **Dogechain**, inspired by the classic *Duck Hunt*. Instead of hunting ducks with a zapper, you launch a flying Husky from a physics-based slingshot to catch "Blunts" flying through the air!
+**The Blunt Hunt** is a retro-style arcade game built for **Dogechain**, inspired by classic NES shooters. Launch a flying Husky from a physics-based slingshot to catch "Blunts" flying through the air!
 
 ## 🎮 Gameplay
-- **Objective**: Use your slingshot to launch the Husky and intercept the flying Blunts.
-- **Physics**: The slingshot features realistic rubber band physics with a dynamic "wobble" effect. The harder you pull, the more it shakes!
-- **Visuals**: 
-    - 8-bit NES aesthetic.
-    - Procedurally animated sprites (squash-and-stretch Husky).
-    - Juice effects: Screen shake, particle explosions, and floating score texts.
-- **Progression**: Catch blunts to increase your score and advance through rounds. The game gets faster as you go!
+
+- **Objective**: Launch the Husky to intercept flying targets.
+- **Physics**: Realistic rubber band physics with "wobble" effects.
+- **Visuals**: 8-bit NES aesthetic with procedural animations and "juice" effects.
+- **Progression**: Increasing difficulty, combo systems, and special target types.
 
 ## 🕹️ Controls
-- **Aim & Shoot**: Click and drag on the slingshot (or the Husky) to pull back the bands. Release to launch.
-- **Mobile Friendly**: Supports touch controls for playing on mobile devices.
 
-## 🛠️ Tech Stack
-- **Frontend**: Vanilla JavaScript (Canvas API)
-    - Custom sprite animation system.
-    - Physics-based particle system.
-- **Backend**: Python (Flask)
-- **Blockchain**: Dogechain integration (Wallet connection, Leaderboard).
+- **Aim & Shoot**: Drag the slingshot to aim and power up. Release to fire.
+- **Mobile**: Full touch support.
 
-## 🚀 Setup & Run
+## 🚀 Quick Start
+
 1. **Install Dependencies**:
+
    ```bash
    pip install flask
    ```
-2. **Run the Server**:
-   ```bash
-   python index.py
-   ```
-3. **Play**:
-   Open your browser and navigate to `http://localhost:5000`.
 
-## 📜 Features
-- [x] **Leaderboard**: Track top scores (mock/on-chain data).
-- [x] **Wallet Connection**: Connect your Dogechain wallet to save scores.
-- [x] **Responsive Design**: Fits 4:3 NES aspect ratio on any screen.
-- [x] **Game Loop**: Rounds, difficulty scaling, timer, and Game Over states.
-- [x] **Combo System**: Stack score multipliers (2x, 4x, 8x) by hitting consecutive shots.
-- [x] **Special Blunts**:
-    - **Gold**: Fast & high reward.
-    - **Armored**: Bounces shots, takes 2 hits.
-- [x] **Audio**: 
-    - **Effects**: Procedural sound effects for shooting, hitting, and collisions.
-    - **Dynamic Music Engine**: Generates procedural Reggae/Dub variations every run. 
+2. **Run**:
+
+   ```bash
+   python app.py
+   ```
+
+3. **Play**: `http://localhost:5000`
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Vanilla JS (Canvas), Custom Sprite System.
+- **Backend**: Python (Flask).
+- **Network**: Dogechain (Wallet Connect).
+
 ---
-*Built with ❤️ for the Dogechain Community.*
+*Built for the Dogechain Community.*
