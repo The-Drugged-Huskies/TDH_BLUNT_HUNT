@@ -6,6 +6,7 @@
 
 - [ ] **NFT Skins**: Allow players to use their connected wallet's NFTs as the projectile (replacing the Husky).
 - [ ] **On-Chain High Scores**: Periodically commit daily/weekly high scores to a smart contract.
+- [ ] **Leaderboard Filters**: Support **Weekly** and **All-Time** views once on-chain.
 - [ ] **Token Wagering**: (Advanced) Allow wagering DOGE on achieving target scores.
 
 ### Mobile & UI

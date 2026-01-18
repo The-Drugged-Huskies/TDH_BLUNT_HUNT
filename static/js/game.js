@@ -46,6 +46,11 @@ class Game {
         // Audio
         this.audio = new AudioManager();
 
+        // Collision Helper (Off-screen)
+        this.collisionCanvas = document.createElement('canvas');
+        this.collisionCtx = this.collisionCanvas.getContext('2d', { willReadFrequently: true });
+
+
         this.resize();
         window.addEventListener('resize', () => this.resize());
 
@@ -159,12 +164,22 @@ class Game {
             });
         }
 
-        this.keySelect = document.getElementById('key-select');
         if (this.keySelect) {
             this.keySelect.addEventListener('change', (e) => {
                 this.audio.setKey(e.target.value);
             });
         }
+
+        // Leaderboard Pagination
+        this.leaderboardPage = 0;
+        this.leaderboardData = [];
+        this.itemsPerPage = 10;
+
+        this.prevPageBtn = document.getElementById('prev-page-btn');
+        this.nextPageBtn = document.getElementById('next-page-btn');
+
+        if (this.prevPageBtn) this.prevPageBtn.addEventListener('click', () => this.changeLeaderboardPage(-1));
+        if (this.nextPageBtn) this.nextPageBtn.addEventListener('click', () => this.changeLeaderboardPage(1));
     }
 
 
@@ -534,13 +549,61 @@ class Game {
         this.blunts.push(new Blunt(this, x, y, this.bluntLifeTime, this.speedMultiplier));
     }
 
-    checkCollision(circle1, circle2) {
-        // Use simpler collision, maybe bounding box or reduced radius for sprites
-        const dx = circle1.x - circle2.x;
-        const dy = circle1.y - circle2.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        // Increase radius for easier hits (1.2x)
-        return distance < (circle1.radius * 1.2 + circle2.radius * 1.2);
+    checkCollision(husky, blunt) {
+        // 1. Fast Distance Check (Bounding Circle) to filter obvious misses
+        // Husky radius ~25, Blunt ~25. Max possible visual size ~35-40.
+        // We use a generous threshold (80px sum) to ensure we don't filter out valid squash/stretch hits.
+        const dx = husky.x - blunt.x;
+        const dy = husky.y - blunt.y;
+        const distSq = dx * dx + dy * dy;
+        const threshold = 80;
+        if (distSq > threshold * threshold) return false;
+
+        // 2. Pixel-Perfect Check
+        const ctx = this.collisionCtx;
+        const canvas = this.collisionCanvas;
+
+        // Set canvas size to the bounding area of interaction (sufficiently large)
+        canvas.width = 150;
+        canvas.height = 150;
+
+        ctx.clearRect(0, 0, 150, 150);
+
+        // Center the operation in the canvas
+        // We want (husky.x, husky.y) and (blunt.x, blunt.y) to map to near the center (75, 75).
+        // Midpoint of the two objects
+        const midX = (husky.x + blunt.x) / 2;
+        const midY = (husky.y + blunt.y) / 2;
+
+        ctx.save();
+        ctx.translate(75 - midX, 75 - midY);
+
+        // A. Draw Husky (Destination)
+        husky.draw(ctx);
+
+        // B. Draw Blunt (Source-In)
+        ctx.globalCompositeOperation = 'source-in';
+
+        // We call the blunt's sprite directly to avoid GCO issues from the blunt.draw() method
+        // Blunt.draw uses size 60, 60.
+        blunt.sprite.draw(ctx, blunt.x, blunt.y, 60, 60, 0);
+
+        ctx.restore();
+
+        // 3. Scan for overlapping pixels
+        // We only need to scan the center area where they likely overlap
+        const pData = ctx.getImageData(0, 0, 150, 150).data;
+
+        // Loop through alpha channel (every 4th byte)
+        // Optimization: checking every 4th or 8th pixel is usually enough effectively
+        for (let i = 3; i < pData.length; i += 16) { // Check every 4th pixel (i += 4 * 4)
+            if (pData[i] > 0) {
+                console.log(`[PixelHit] Hit at index ${i}, Alpha: ${pData[i]}`);
+                return true;
+            }
+        }
+
+        return false;
     }
     async showLeaderboard() {
         this.leaderboardScreen.classList.remove('hidden');
@@ -550,31 +613,61 @@ class Game {
             const res = await fetch('/static/data/leaderboard.json');
             const data = await res.json();
 
-            // Filter Top 10
-            const top10 = data.slice(0, 10);
-
-            this.leaderboardRows.innerHTML = '';
-            top10.forEach(entry => {
-                let displayName = entry.name;
-                if (displayName.length > 12) {
-                    // Formatting like wallet: 0x1234...5678
-                    if (displayName.startsWith('0x')) {
-                        displayName = `${displayName.substring(0, 6)}...${displayName.substring(displayName.length - 4)}`;
-                    } else {
-                        displayName = displayName.substring(0, 10) + '...';
-                    }
-                }
-
-                const row = document.createElement('div');
-                row.className = 'leaderboard-row';
-                row.innerHTML = `<span>${entry.rank}</span><span>${displayName}</span><span>${entry.score}</span>`;
-                this.leaderboardRows.appendChild(row);
-            });
+            this.leaderboardData = data;
+            this.leaderboardPage = 0;
+            this.renderLeaderboard();
 
         } catch (err) {
             console.error("Failed to load leaderboard", err);
             this.leaderboardRows.innerHTML = '<p>Failed to load data.</p>';
         }
+    }
+
+    renderLeaderboard() {
+        const start = this.leaderboardPage * this.itemsPerPage;
+        const end = start + this.itemsPerPage;
+        const pageData = this.leaderboardData.slice(start, end);
+
+        this.leaderboardRows.innerHTML = '';
+
+        if (pageData.length === 0 && this.leaderboardPage > 0) {
+            // Safety fallback
+            this.changeLeaderboardPage(-1);
+            return;
+        }
+
+        pageData.forEach(entry => {
+            let displayName = entry.name;
+            if (displayName.length > 12) {
+                // Formatting like wallet: 0x1234...5678
+                if (displayName.startsWith('0x')) {
+                    displayName = `${displayName.substring(0, 6)}...${displayName.substring(displayName.length - 4)}`;
+                } else {
+                    displayName = displayName.substring(0, 10) + '...';
+                }
+            }
+
+            const row = document.createElement('div');
+            row.className = 'leaderboard-row';
+            row.innerHTML = `<span>${entry.rank}</span><span>${displayName}</span><span>${entry.score}</span>`;
+            this.leaderboardRows.appendChild(row);
+        });
+
+        // Update Buttons
+        if (this.prevPageBtn) this.prevPageBtn.disabled = this.leaderboardPage === 0;
+        if (this.nextPageBtn) this.nextPageBtn.disabled = end >= this.leaderboardData.length;
+    }
+
+    changeLeaderboardPage(delta) {
+        const newPage = this.leaderboardPage + delta;
+        if (newPage < 0) return;
+
+        // Check upper limit
+        const maxPages = Math.ceil(this.leaderboardData.length / this.itemsPerPage);
+        if (newPage >= maxPages) return;
+
+        this.leaderboardPage = newPage;
+        this.renderLeaderboard();
     }
 
     hideLeaderboard() {
