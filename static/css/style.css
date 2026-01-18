@@ -234,6 +234,8 @@ canvas {
 #start-screen {
     background: rgba(0, 0, 0, 0.4);
     /* Slight tint for readability, but mostly visible */
+    z-index: 190;
+    /* Below header (200) so buttons work */
 }
 
 
@@ -451,11 +453,12 @@ canvas {
     border: 4px solid #fff;
     padding: 20px;
     width: 300px;
-    z-index: 250; /* Above Header which is 200 */
+    z-index: 250;
+    /* Above Header which is 200 */
     display: flex;
     flex-direction: column;
     gap: 15px;
-    box-shadow: 8px 8px 0px rgba(0,0,0,0.5);
+    box-shadow: 8px 8px 0px rgba(0, 0, 0, 0.5);
 }
 
 .settings-title {
@@ -520,6 +523,7 @@ canvas {
     width: auto;
     margin-top: 0;
 }
+
 /* Select Box Styling */
 .nes-select {
     background: #000;
