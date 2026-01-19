@@ -64,4 +64,79 @@ This document contains internal development notes, deployment instructions, and 
 ## ☁️ Deployment (Vercel)
 
 - Configured via `vercel.json` to use `@vercel/python` runtime.
-- **Note**: Local `leaderboard.json` is ephemeral and resets on deployment. Use Smart Contract or DB for production.
+- **Dependencies**: Only `requirements.txt` is needed (`Flask`).
+- **Ignore**: Do NOT upload `node_modules`.
+
+## ⛓️ Smart Contract Workflow
+
+### 1. Deployment (`deploy.html`)
+
+We use a client-side deployment tool to avoid requiring a complex local crypto environment.
+
+1. Open `static/deploy.html` in your browser.
+2. Connect your MetaMask (ensure Dogechain network).
+3. Click **Deploy Contract**.
+4. **COPY** the resulting Contract Address from the log.
+
+### 2. Configuration (`wallet.js`)
+
+You must tell the frontend where to find your new contract.
+
+1. Open `static/js/wallet.js`.
+2. Find line ~191: `const LEADERBOARD_CONTRACT_ADDRESS = "..."`.
+3. Paste your new address there.
+4. Save and deploy your frontend.
+
+### 3. Admin: Fund Recovery (`withdraw.html`)
+
+The contract collects 25% of fees for the Dev and 75% for the Pot. The Pot pays out automatically, but if you need to recover funds manually:
+
+1. Open `static/withdraw.html` in your browser.
+2. Connect the **Owner Wallet** (the one that deployed the contract).
+3. Click **Recover Funds** to withdraw the entire contract balance to your wallet.
+
+## 🕒 Game Schedule & Payout Mechanics
+
+The game operates on a strict **Hourly Schedule**, ending at **Minute 42** of every hour.
+
+### 1. The Schedule (Automatic)
+
+The Smart Contract automatically calculates the deadline.
+
+- If a game starts at **14:30**, it ends at **14:42**.
+- If a game starts at **14:50**, it ends at **15:42**.
+- **Payout Time**: The moment the clock strikes **XX:42**, the round is officially Over.
+
+### 2. The Payout Trigger (Hybrid System)
+
+Because the blockchain cannot "wake up" by itself, the payout needs a nudge. This happens in two reliable ways:
+
+**A. The "Polite" Trigger (Primary)**
+
+- **When**: You (or any user) connect your wallet to the site.
+- **What Happens**: The site checks if the time is past XX:42.
+- **Action**: A popup appears: *"Round Ended! Click OK to distribute prize."*
+- **Result**: You sign the transaction -> Winner gets paid -> Leaderboard Wipes -> Timer Resets.
+
+**B. The "Forceful" Trigger (Backup)**
+
+- **When**: Only if nobody connects via the site, but someone manages to send a "Pay 1 DOGE" transaction directly.
+- **Action**: The contract prevents the new game from starting until the old business is settled.
+- **Result**: The new player's transaction *automatically* pays the previous winner first, resets the leaderboard, and **then** starts the new game.
+
+### 3. What Happens During Payout?
+
+All of these actions happen **simultaneously** in a single transaction:
+
+1. **Prize Sent**: The entire Pot is sent to the wallet of Rank #1.
+2. **Leaderboard Wiped**: The list of names and scores is permanently deleted.
+3. **Timer Reset**: The `gameEndTime` is updated to the *next* XX:42.
+
+### 4. Example Scenario
+
+1. **10:30 AM**: Players play, pot grows to 500 DOGE.
+2. **10:42 AM**: Time is up.
+3. **10:43 AM**: You visit the site.
+4. **Popup**: "Round Ended". You click OK.
+5. **Transaction**: The 500 DOGE is sent to the winner. The board is now empty.
+6. **10:44 AM**: New round begins! Timer counts down to 11:42 AM.

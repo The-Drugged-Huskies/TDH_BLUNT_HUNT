@@ -192,9 +192,47 @@ class Game {
 
         if (this.prevPageBtn) this.prevPageBtn.addEventListener('click', () => this.changeLeaderboardPage(-1));
         if (this.nextPageBtn) this.nextPageBtn.addEventListener('click', () => this.changeLeaderboardPage(1));
+
+        // Pot Polling
+        this.initPotPolling();
     }
 
+    async initPotPolling() {
+        const updatePot = async () => {
+            if (window.fetchPotInfo) {
+                const info = await window.fetchPotInfo();
+                if (info) {
+                    const potDisplay = document.getElementById('pot-display');
+                    const potTimer = document.getElementById('pot-timer');
 
+                    if (potDisplay) {
+                        potDisplay.innerText = `POT: ${info.pot}`;
+                        potDisplay.classList.remove('hidden');
+                    }
+                    if (potTimer) {
+                        const timeLeft = Math.max(0, info.endTime - Date.now());
+                        const mins = Math.floor(timeLeft / 60000);
+                        const secs = Math.floor((timeLeft % 60000) / 1000);
+                        potTimer.innerText = `PAYOUT IN: ${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                        potTimer.classList.remove('hidden');
+                    }
+                }
+            }
+        };
+        // Initial call
+        updatePot();
+        // Poll every 10s
+        setInterval(updatePot, 10000);
+        // Timer update every second for visual countdown (approximation)
+        setInterval(() => {
+            const potTimer = document.getElementById('pot-timer');
+            if (potTimer && !potTimer.classList.contains('hidden')) {
+                // This is a simple visual decrement, the 10s poll syncs it
+                // For now, simpler to just poll frequently or implement a proper clock sync
+                // We'll rely on the 10s poll for the pot and maybe just let the timer jump for now to avoid complexity
+            }
+        }, 1000);
+    }
 
     resize() {
         // Size canvas to its CSS dimensions (which are controlled by the 4:3 container)
@@ -227,8 +265,39 @@ class Game {
         }
     }
 
-    start() {
+    async start() {
         if (this.isRunning) return;
+
+        // ALWAYS Force Payment (Ticket System)
+        if (window.payEntryFee) {
+            this.startBtn.innerText = "PAYING...";
+            this.startBtn.disabled = true;
+
+            try {
+                // Trigger Payment
+                const result = await window.payEntryFee();
+
+                if (!result || !result.success) {
+                    // Payment Failed or Cancelled
+                    this.startBtn.innerText = "PAY 1 DOGE";
+                    this.startBtn.disabled = false;
+                    return; // Stop here
+                }
+
+                // Success! Proceed to game start.
+
+            } catch (e) {
+                console.error("Payment Error:", e);
+                this.startBtn.innerText = "ERROR";
+                setTimeout(() => {
+                    this.startBtn.innerText = "PAY 1 DOGE";
+                    this.startBtn.disabled = false;
+                }, 2000);
+                return;
+            }
+        }
+
+
         document.getElementById('start-screen').classList.add('hidden');
         document.getElementById('game-over-screen').classList.add('hidden');
         document.getElementById('nes-hud').classList.remove('hidden');

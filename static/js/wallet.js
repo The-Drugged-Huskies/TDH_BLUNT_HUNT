@@ -21,11 +21,57 @@ const disconnectBtn = document.getElementById('disconnect-btn');
 let currentAccount = null;
 
 // Expose for game.js
+// Expose for game.js
 window.getCurrentWallet = () => currentAccount;
+
+window.showCustomModal = (message, isCheck = false) => {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('custom-modal');
+        const title = document.getElementById('modal-title');
+        const msg = document.getElementById('modal-message');
+        const okBtn = document.getElementById('modal-ok-btn');
+        const cancelBtn = document.getElementById('modal-cancel-btn');
+
+        if (!modal) {
+            // Fallback
+            if (isCheck) resolve(confirm(message));
+            else { alert(message); resolve(true); }
+            return;
+        }
+
+        msg.innerText = message;
+        title.innerText = isCheck ? "CONFIRM" : "NOTICE";
+        title.style.color = isCheck ? '#fc9838' : '#83d313'; // Orange for confirm, Green for notice
+
+        // Reset listeners by cloning
+        const newOk = okBtn.cloneNode(true);
+        const newCancel = cancelBtn.cloneNode(true);
+        okBtn.parentNode.replaceChild(newOk, okBtn);
+        cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+
+        modal.classList.remove('hidden');
+
+        if (isCheck) {
+            newCancel.classList.remove('hidden');
+        } else {
+            newCancel.classList.add('hidden');
+        }
+
+        newOk.onclick = () => {
+            modal.classList.add('hidden');
+            resolve(true);
+        };
+
+        newCancel.onclick = () => {
+            modal.classList.add('hidden');
+            resolve(false);
+        };
+    });
+};
 
 async function connectWallet() {
     if (typeof window.ethereum === 'undefined') {
-        alert('Please install MetaMask to play on Dogechain!');
+        await window.showCustomModal('Please install MetaMask to play on Dogechain!');
         return;
     }
 
@@ -88,6 +134,9 @@ function updateUI(account) {
         if (startBtn) startBtn.classList.remove('hidden');
 
         fetchBalance(account);
+
+        // Payout Check: Trigger immediately if round ended
+        window.checkAndTriggerPayout();
     } else {
         // Disconnected
         connectBtn.innerText = 'CONNECT';
@@ -188,12 +237,18 @@ window.addEventListener('DOMContentLoaded', () => {
 // --- Leaderboard Integration ---
 
 // Placeholder - User must update this after deployment!
-const LEADERBOARD_CONTRACT_ADDRESS = "0x4e3B6fd8A68074Ee0Ba5f036288CE22d25285eFE";
+const LEADERBOARD_CONTRACT_ADDRESS = "0x10f2F8c009704FADBf989c6387a5ecA1B7c5914B
+";
+const GAME_COST_DOGE = "1.0"; // 1 DOGE
 
 const LEADERBOARD_ABI = [
+    "function startGame() external payable",
     "function submitScore(uint256 _score) external",
     "function getLeaderboard() external view returns (tuple(address player, uint256 score, uint256 timestamp)[])",
-    "function getLowestQualifyingScore() external view returns (uint256)"
+    "function getLowestQualifyingScore() external view returns (uint256)",
+    "function getPotInfo() external view returns (uint256 pot, uint256 endTime)",
+    "function hasTicket(address player) external view returns (bool)",
+    "function distributePrize() external"
 ];
 
 window.getLeaderboardContract = () => {
@@ -203,27 +258,93 @@ window.getLeaderboardContract = () => {
     return new ethers.Contract(LEADERBOARD_CONTRACT_ADDRESS, LEADERBOARD_ABI, signer);
 };
 
-// Read-only provider for fetching leaderboard without wallet connection (optional, if we want public view)
-// But for now we use the connected provider or a public RPC if disconnected.
+window.checkAndTriggerPayout = async () => {
+    try {
+        const contract = window.getLeaderboardContract();
+        if (!contract) return;
+
+        const [pot, endTime] = await contract.getPotInfo();
+        const now = Math.floor(Date.now() / 1000);
+
+        if (now >= endTime.toNumber()) {
+            // Check if there are players to pay
+            const lb = await contract.getLeaderboard();
+            let msg = "Round ended! ";
+            if (lb.length > 0 && pot.gt(0)) {
+                msg += "Click OK to distribute the Prize Pool and restart the timer.";
+            } else {
+                msg += "Click OK to reset the timer (No winners).";
+            }
+
+            if (await window.showCustomModal(msg, true)) {
+                try {
+                    const tx = await contract.distributePrize();
+                    console.log("Distribute TX:", tx.hash);
+                    await window.showCustomModal("Transaction Sent! Waiting for confirmation...");
+                    await tx.wait();
+                    await window.showCustomModal("Round Reset! Page will reload.");
+                    window.location.reload();
+                } catch (err) {
+                    console.error("Payout failed:", err);
+                    await window.showCustomModal("Payout failed or cancelled.");
+                }
+            }
+        }
+    } catch (e) {
+        console.error("Payout Check Error:", e);
+    }
+}
+
 window.getPublicLeaderboardContract = () => {
     const rpcUrl = 'https://rpc.dogechain.dog';
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl, { name: 'dogechain', chainId: 2000 });
     return new ethers.Contract(LEADERBOARD_CONTRACT_ADDRESS, LEADERBOARD_ABI, provider);
 }
 
+window.payEntryFee = async () => {
+    try {
+        const contract = window.getLeaderboardContract();
+        if (!contract) throw new Error("Wallet not connected");
+
+        const tx = await contract.startGame({
+            value: ethers.utils.parseEther(GAME_COST_DOGE)
+        });
+        console.log("Payment sent:", tx.hash);
+        await tx.wait();
+        console.log("Payment confirmed! Game starting...");
+        return { success: true };
+    } catch (err) {
+        console.error("Payment failed:", err);
+        return { success: false, reason: err.message };
+    }
+};
+
+window.fetchPotInfo = async () => {
+    try {
+        const contract = window.getPublicLeaderboardContract();
+        if (LEADERBOARD_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") return null;
+
+        const [pot, endTime] = await contract.getPotInfo();
+        return {
+            pot: ethers.utils.formatEther(pot),
+            endTime: endTime.toNumber() * 1000 // Convert to ms
+        };
+    } catch (err) {
+        console.error("Error fetching pot info:", err);
+        return null;
+    }
+};
+
 window.fetchLeaderboard = async () => {
     try {
         const contract = window.getPublicLeaderboardContract();
-        // Check if address is set
         if (LEADERBOARD_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") {
-            console.warn("Leaderboard Contract Address not set!");
             return [];
         }
         const data = await contract.getLeaderboard();
-        // Format data
         return data.map(item => ({
             name: item.player,
-            score: item.score.toNumber(), // score is uint256, but game max score fits in JS number
+            score: item.score.toNumber(),
             timestamp: item.timestamp.toNumber()
         }));
     } catch (err) {
@@ -237,14 +358,8 @@ window.submitHighScore = async (score) => {
         const contract = window.getLeaderboardContract();
         if (!contract) throw new Error("Wallet not connected");
 
-        // Verify if worth submitting (save gas)
-        // Note: fetchLeaderboard returns sorted, so we can just check local data or call contract
-        const lowest = await contract.getLowestQualifyingScore();
-
-        if (score <= lowest.toNumber()) {
-            console.log("Score too low to qualify for Top 100.");
-            return { success: false, reason: 'Score too low' };
-        }
+        // Note: Credits are checked on-chain, but good to have UI feedback if 0 credits.
+        // For now we rely on the contract revert.
 
         const tx = await contract.submitScore(score);
         console.log("Transaction sent:", tx.hash);
@@ -259,16 +374,12 @@ window.submitHighScore = async (score) => {
 
 window.checkLeaderboardEligibility = async (score) => {
     try {
-        console.log("Checking eligibility for score:", score);
-        // Use public provider to check without needing wallet connected yet
+        // Eligibility now implies having a credit AND being high enough score
+        // But for simplicity, we just check score vs lowest. Credit check happens at Start.
         const contract = window.getPublicLeaderboardContract();
-        if (LEADERBOARD_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") {
-            console.log("Contract address not set");
-            return false;
-        }
+        if (LEADERBOARD_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") return false;
 
         const lowest = await contract.getLowestQualifyingScore();
-        console.log("Lowest qualifying score:", lowest.toNumber());
         return score > lowest.toNumber();
     } catch (err) {
         console.error("Error checking eligibility:", err);
@@ -282,9 +393,7 @@ window.checkIsTopScore = async (score) => {
         if (LEADERBOARD_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") return true;
 
         const data = await contract.getLeaderboard();
-
         if (data.length === 0) return true;
-
         const topScore = data[0].score.toNumber();
         return score > topScore;
     } catch (e) {

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Withdraw Funds - Blunt Hunt Leaderboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #111;
+            color: #0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 50px;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            text-shadow: 2px 2px #000;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            background: #000;
+            color: #0f0;
+            border: 2px solid #0f0;
+            margin: 10px;
+            text-transform: uppercase;
+        }
+
+        button:hover {
+            background: #0f0;
+            color: #000;
+        }
+
+        button:disabled {
+            border-color: #555;
+            color: #555;
+            cursor: not-allowed;
+        }
+
+        #status {
+            margin-top: 20px;
+            font-size: 1rem;
+            max-width: 600px;
+            text-align: center;
+            white-space: pre-wrap;
+        }
+
+        .error {
+            color: #f00;
+        }
+
+        .success {
+            color: #ff0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>ADMIN WITHDRAW</h1>
+    <p>Target Contract: <span id="contractAddr">0x124e7F15dC71cE4c77F4fcC3a04d4796b7677e81</span></p>
+
+    <button id="connectBtn">1. Connect Wallet</button>
+
+    <div style="margin: 10px; font-size: 0.9rem;">
+        <div>User Balance: <span id="walletBal" style="color:#fff;">-</span> DOGE</div>
+        <div>Contract Balance: <span id="contractBal" style="color:#fff;">-</span> DOGE</div>
+    </div>
+
+    <button id="withdrawBtn" disabled>2. Recover Funds</button>
+
+    <div id="status"></div>
+
+    <script>
+        const CONTRACT_ADDRESS = "0x10f2F8c009704FADBf989c6387a5ecA1B7c5914B";
+        const ABI = [
+            "function recoverFunds() external",
+            "function owner() view returns (address)"
+        ];
+
+        let provider, signer, contract;
+
+        function log(msg, type = '') {
+            const el = document.getElementById('status');
+            el.innerText = msg;
+            el.className = type;
+            console.log(msg);
+        }
+
+        async function updateBalances(addr) {
+            try {
+                // User Balance
+                const bal = await provider.getBalance(addr);
+                document.getElementById('walletBal').innerText = parseFloat(ethers.utils.formatEther(bal)).toFixed(4);
+
+                // Contract Balance
+                const cBal = await provider.getBalance(CONTRACT_ADDRESS);
+                document.getElementById('contractBal').innerText = parseFloat(ethers.utils.formatEther(cBal)).toFixed(4);
+            } catch (e) {
+                console.error("Balance Error:", e);
+            }
+        }
+
+        document.getElementById('connectBtn').addEventListener('click', async () => {
+            if (!window.ethereum) {
+                log("MetaMask not found!", "error");
+                return;
+            }
+            try {
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                await provider.send("eth_requestAccounts", []);
+                signer = provider.getSigner();
+                const addr = await signer.getAddress();
+
+                log("Connected: " + addr);
+                document.getElementById('connectBtn').innerText = "Connected: " + addr.substring(0, 6) + "...";
+
+                // Show Balances
+                await updateBalances(addr);
+
+                // Init Contract
+                contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+                // Optional: Check owner
+                try {
+                    const ownerAddr = await contract.owner();
+                    if (ownerAddr.toLowerCase() !== addr.toLowerCase()) {
+                        log("WARNING: You are NOT the contract owner.\nOwner is: " + ownerAddr, "error");
+                    } else {
+                        log("Welcome, Owner. Ready to withdraw.", "success");
+                        document.getElementById('withdrawBtn').disabled = false;
+                    }
+                } catch (e) {
+                    log("Could not verify owner: " + e.message, "error");
+                    // Enable anyway just in case
+                    document.getElementById('withdrawBtn').disabled = false;
+                }
+
+            } catch (e) {
+                log("Connection Failed: " + e.message, "error");
+            }
+        });
+
+        document.getElementById('withdrawBtn').addEventListener('click', async () => {
+            if (!contract) return;
+            try {
+                log("Sending transaction...", "success");
+                const tx = await contract.recoverFunds();
+                log("Transaction Sent! Hash:\n" + tx.hash + "\nWaiting for confirmation...", "success");
+
+                await tx.wait();
+                log("SUCCESS! Funds recovered to your wallet.", "success");
+
+                // Refresh Balances
+                const addr = await signer.getAddress();
+                await updateBalances(addr);
+
+            } catch (e) {
+                log("Transaction Failed: " + (e.reason || e.message), "error");
+            }
+        });
+
+    </script>
+</body>
+
+</html>

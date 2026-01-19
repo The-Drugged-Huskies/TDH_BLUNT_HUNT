@@ -24,6 +24,7 @@
                 <div id="header-left">
                     <button id="leaderboard-btn" class="btn-secondary header-btn">LEADERBOARD</button>
                     <div id="timer-display" class="hidden">TIME: 60</div>
+
                 </div>
                 <div id="wallet-container">
                     <button id="connect-wallet-btn" class="btn-wallet">CONNECT</button>
@@ -45,6 +46,14 @@
                 <div id="start-screen" class="overlay">
                     <h1 class="title">BLUNT HUNT</h1>
                     <p class="subtitle">DOGECHAIN EDITION</p>
+
+                    <!-- Pot Display (Moved) -->
+                    <div id="pot-display"
+                        style="color: #FFD700; font-size: 1.2rem; margin-bottom: 5px; text-shadow: 2px 2px #000;">POT:
+                        0.00</div>
+                    <div id="pot-timer" style="font-size: 0.7rem; color: #ccc; margin-bottom: 20px;">NEXT PAYOUT: 00:00
+                    </div>
+
 
                     <!-- Wallet Connect Flow -->
                     <button id="start-connect-btn" class="btn-primary">CONNECT WALLET</button>
@@ -118,6 +127,18 @@
                 <div id="pause-screen" class="overlay hidden">
                     <h1 class="title">PAUSED</h1>
                     <p class="subtitle">CLICK TO RESUME</p>
+                </div>
+
+                <!-- Generic NES Modal -->
+                <div id="custom-modal" class="overlay hidden" style="z-index: 2000;">
+                    <h1 id="modal-title" class="title" style="font-size: 1.5rem; margin-bottom: 20px;">NOTICE</h1>
+                    <p id="modal-message" class="subtitle"
+                        style="font-size: 0.8rem; text-transform: none; line-height: 1.5; margin-bottom: 30px; max-width: 80%;">
+                        Message</p>
+                    <div id="modal-buttons" style="display: flex; gap: 20px; justify-content: center; width: 100%;">
+                        <button id="modal-ok-btn" class="btn-primary">OK</button>
+                        <button id="modal-cancel-btn" class="btn-secondary hidden">CANCEL</button>
+                    </div>
                 </div>
             </div>
 

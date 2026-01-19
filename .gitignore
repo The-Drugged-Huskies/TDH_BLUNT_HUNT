@@ -6,3 +6,4 @@ venv/
 .DS_Store
 TODO.md
 static/data/leaderboard.json
+node_modules/
