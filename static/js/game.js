@@ -291,6 +291,8 @@ class Game {
                 }
 
                 // Success! Proceed to game start.
+                this.startBtn.disabled = false;
+                if (this.restartBtn) this.restartBtn.disabled = false;
 
             } catch (e) {
                 console.error("Payment Error:", e);
