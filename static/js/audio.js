@@ -777,8 +777,8 @@ class AudioManager {
 
         // Env
         gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.3 * this.sfxVolume, now + 0.1);
-        gain.gain.linearRampToValueAtTime(0.3 * this.sfxVolume, now + 1.5);
+        gain.gain.linearRampToValueAtTime(0.1 * this.sfxVolume, now + 0.1);
+        gain.gain.linearRampToValueAtTime(0.1 * this.sfxVolume, now + 1.5);
         gain.gain.linearRampToValueAtTime(0, now + 2.0);
 
         osc.connect(gain);
