@@ -242,6 +242,10 @@ canvas {
     z-index: 250;
 }
 
+#pause-screen {
+    cursor: pointer;
+}
+
 .overlay.hidden {
     display: none;
 }

@@ -11,6 +11,9 @@ class Game {
         this.ctx = this.canvas.getContext('2d');
         this.assets = assets;
 
+        // Expose game instance for wallet.js interaction
+        window.game = this;
+
         // Fixed NES-like Resolution
         this.canvas.width = 320;
         this.canvas.height = 240; // Increased height to include HUD area for canvas coverage
@@ -28,6 +31,15 @@ class Game {
         this.score = 0;
         this.particles = new ParticleManager(this);
         this.isRunning = false;
+        this.isPaused = false;
+        this.pauseScreen = document.getElementById('pause-screen');
+
+        // Resume on Pause Screen Click
+        if (this.pauseScreen) {
+            this.pauseScreen.addEventListener('click', () => {
+                if (this.isPaused) this.togglePause();
+            });
+        }
 
         // Difficulty settings
         this.bluntSpawnRate = 2000; //ms
@@ -373,6 +385,29 @@ class Game {
         }
     }
 
+    togglePause() {
+        if (!this.isRunning) return;
+
+        this.isPaused = !this.isPaused;
+
+        if (this.isPaused) {
+            if (this.pauseScreen) this.pauseScreen.classList.remove('hidden');
+            // Optional: Suspend audio
+            // if (this.audio.ctx.state === 'running') this.audio.ctx.suspend();
+        } else {
+            if (this.pauseScreen) this.pauseScreen.classList.add('hidden');
+            // Optional: Resume audio
+            // if (this.audio.ctx.state === 'suspended') this.audio.ctx.resume();
+
+            // Fix delta time spike to prevent game jump
+            this.lastTime = performance.now();
+            this.lastSpawnTime = performance.now() - (this.lastSpawnTime % this.bluntSpawnRate);
+
+            // Re-trigger loop if it stopped (though we just returned early usually)
+            requestAnimationFrame(this.loop);
+        }
+    }
+
     updateTimer(timestamp) {
         const elapsed = (timestamp - this.startTime) / 1000;
         const remaining = Math.max(0, this.gameDuration - elapsed);
@@ -396,6 +431,7 @@ class Game {
 
     loop(timestamp) {
         if (!this.isRunning) return;
+        if (this.isPaused) return;
 
         this.ctx.clearRect(0, 0, this.width, this.height);
 

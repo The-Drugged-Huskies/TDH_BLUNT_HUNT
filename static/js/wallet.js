@@ -137,7 +137,13 @@ function initWallet() {
     console.log("Initializing Wallet...");
     if (connectBtn) {
         connectBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent immediate close
+            // e.stopPropagation(); // Allow bubbling if needed, but we connect directly here
+
+            // Trigger Pause if game is running
+            if (window.game && window.game.isRunning) {
+                window.game.togglePause();
+            }
+
             togglePopup();
         });
     }
