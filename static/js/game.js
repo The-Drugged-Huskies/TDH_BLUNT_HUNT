@@ -1204,6 +1204,10 @@ window.onload = async () => {
         // Start Game
         const game = new Game(loadedAssets);
 
+        // Show Game (Fade In)
+        const gameContainer = document.getElementById('game-container');
+        if (gameContainer) gameContainer.style.opacity = '1';
+
     } catch (err) {
         console.error("Error loading assets:", err);
         alert("Failed to load game assets. Check console.");

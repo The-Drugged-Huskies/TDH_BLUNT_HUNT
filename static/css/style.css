@@ -64,6 +64,9 @@ body {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    opacity: 0;
+    /* Hidden initially */
+    transition: opacity 1.5s ease-in;
 }
 
 #game-background {
