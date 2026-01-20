@@ -223,15 +223,7 @@ class Game {
         updatePot();
         // Poll every 10s
         setInterval(updatePot, 10000);
-        // Timer update every second for visual countdown (approximation)
-        setInterval(() => {
-            const potTimer = document.getElementById('pot-timer');
-            if (potTimer && !potTimer.classList.contains('hidden')) {
-                // This is a simple visual decrement, the 10s poll syncs it
-                // For now, simpler to just poll frequently or implement a proper clock sync
-                // We'll rely on the 10s poll for the pot and maybe just let the timer jump for now to avoid complexity
-            }
-        }, 1000);
+
     }
 
     resize() {

@@ -15,18 +15,29 @@ class AudioManager {
                 this.ctx.resume();
             }
         }, { once: true });
+
+        // Master Busses
+        this.musicBus = this.ctx.createGain();
+        this.musicBus.gain.value = 1.0;
+        this.musicBus.connect(this.ctx.destination);
+
+        this.sfxBus = this.ctx.createGain();
+        this.sfxBus.gain.value = 1.0;
+        this.sfxBus.connect(this.ctx.destination);
     }
 
     setMusicVolume(percent) {
         this.musicVolume = percent / 100;
-        // Apply immediate change if needed (not strictly needed for procedural sequencer unless we have a master bus, 
-        // but note playback will pick it up on next note).
-        // For a more immediate effect, we'd need a master gain node for music.
-        // But per-note check is fine for this style.
+        if (this.musicBus) {
+            this.musicBus.gain.setTargetAtTime(this.musicVolume, this.ctx.currentTime, 0.05);
+        }
     }
 
     setSfxVolume(percent) {
         this.sfxVolume = percent / 100;
+        if (this.sfxBus) {
+            this.sfxBus.gain.setTargetAtTime(this.sfxVolume, this.ctx.currentTime, 0.05);
+        }
     }
 
     playTone(freq, type, duration, vol = 0.1) {
@@ -38,12 +49,12 @@ class AudioManager {
         osc.type = type;
         osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
 
-        const masterVol = vol * this.sfxVolume;
+        const masterVol = vol; // Bus handles master volume
         gain.gain.setValueAtTime(masterVol, this.ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
 
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(this.sfxBus);
 
         osc.start();
         osc.stop(this.ctx.currentTime + duration);
@@ -58,12 +69,12 @@ class AudioManager {
         osc.frequency.setValueAtTime(600, this.ctx.currentTime);
         osc.frequency.exponentialRampToValueAtTime(200, this.ctx.currentTime + 0.15);
 
-        const masterVol = 0.15 * this.sfxVolume;
+        const masterVol = 0.15; // Bus handles master volume
         gain.gain.setValueAtTime(masterVol, this.ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
 
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(this.sfxBus);
 
         osc.start();
         osc.stop(this.ctx.currentTime + 0.15);
@@ -82,11 +93,11 @@ class AudioManager {
         osc1.frequency.setValueAtTime(880, now);
         osc1.frequency.exponentialRampToValueAtTime(1760, now + 0.1);
 
-        const masterVol = 0.25 * this.sfxVolume;
+        const masterVol = 0.25; // Bus handles master volume
         gain1.gain.setValueAtTime(masterVol, now);
         gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
         osc1.connect(gain1);
-        gain1.connect(this.ctx.destination);
+        gain1.connect(this.sfxBus);
         osc1.start();
         osc1.stop(now + 0.8);
 
@@ -97,7 +108,7 @@ class AudioManager {
         gain2.gain.setValueAtTime(masterVol, now);
         gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
         osc2.connect(gain2);
-        gain2.connect(this.ctx.destination);
+        gain2.connect(this.sfxBus);
         osc2.start();
         osc2.stop(now + 0.8);
     }
@@ -109,11 +120,11 @@ class AudioManager {
         osc.type = 'sine';
         osc.frequency.setValueAtTime(1200, this.ctx.currentTime);
 
-        const masterVol = 0.2 * this.sfxVolume;
+        const masterVol = 0.2; // Bus handles master volume
         gain.gain.setValueAtTime(masterVol, this.ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(this.sfxBus);
         osc.start();
         osc.stop(this.ctx.currentTime + 0.3);
     }
@@ -205,7 +216,7 @@ class AudioManager {
         this.delayOutputGain.gain.value = 1.0;
 
         this.delayNode.connect(this.delayOutputGain);
-        this.delayOutputGain.connect(this.ctx.destination);
+        this.delayOutputGain.connect(this.musicBus);
     }
 
     generateComposition() {
@@ -548,11 +559,11 @@ class AudioManager {
         osc.frequency.setValueAtTime(120, time); // Thuddier
         osc.frequency.exponentialRampToValueAtTime(40, time + 0.5); // Deeper drop
 
-        const masterVol = 0.9 * this.musicVolume * velocity;
+        const masterVol = 0.9 * velocity; // Bus handles master volume
         gain.gain.setValueAtTime(masterVol, time);
         gain.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(this.musicBus);
         osc.start(time);
         osc.stop(time + 0.5);
     }
@@ -571,11 +582,11 @@ class AudioManager {
         osc.frequency.exponentialRampToValueAtTime(100, time + 0.05);
 
         // Reduced base volume
-        gain.gain.setValueAtTime(0.25 * this.musicVolume * effectiveVol, time);
+        gain.gain.setValueAtTime(0.25 * effectiveVol, time);
         gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
 
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(this.musicBus);
 
         // 2. Crack/Slap
         const noiseBuffer = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.05, this.ctx.sampleRate);
@@ -591,12 +602,12 @@ class AudioManager {
 
         const noiseGain = this.ctx.createGain();
         // Reduced base volume
-        noiseGain.gain.setValueAtTime(0.2 * this.musicVolume * effectiveVol, time);
+        noiseGain.gain.setValueAtTime(0.2 * effectiveVol, time);
         noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
 
         noise.connect(noiseFilter);
         noiseFilter.connect(noiseGain);
-        noiseGain.connect(this.ctx.destination);
+        noiseGain.connect(this.musicBus);
 
         osc.start(time);
         osc.stop(time + 0.05);
@@ -615,11 +626,11 @@ class AudioManager {
         filter.type = 'highpass';
         filter.frequency.value = filterFreq;
         const gain = this.ctx.createGain();
-        const masterVol = 0.15 * this.musicVolume * velocity;
+        const masterVol = 0.15 * velocity; // Bus handles master volume
         gain.gain.value = masterVol;
         noise.connect(filter);
         filter.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(this.musicBus);
         noise.start(time);
     }
 
@@ -641,9 +652,9 @@ class AudioManager {
         const gain = this.ctx.createGain();
         gain.gain.setValueAtTime(0, time);
 
-        // Scale gain envelope points by musicVolume
-        const attackVal = 0.5 * this.musicVolume * velocity;
-        const sustainVal = 0.35 * this.musicVolume * velocity;
+        // Scale gain envelope points by musicVolume -- NO, Bus handles it
+        const attackVal = 0.5 * velocity;
+        const sustainVal = 0.35 * velocity;
 
         gain.gain.linearRampToValueAtTime(attackVal, time + 0.02); // Quieter attack (was 0.7)
         gain.gain.linearRampToValueAtTime(sustainVal, time + 0.1);  // Quieter sustain (was 0.5)
@@ -651,7 +662,7 @@ class AudioManager {
 
         osc.connect(filter);
         filter.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(this.musicBus);
 
         osc.start(time);
         osc.stop(time + length + 0.1);
@@ -676,13 +687,13 @@ class AudioManager {
             const gain = this.ctx.createGain();
             osc.frequency.value = freq;
 
-            const masterVol = 0.19 * this.musicVolume * strumVelocity;
+            const masterVol = 0.19 * strumVelocity; // Bus handles master volume
             gain.gain.setValueAtTime(masterVol, time);
             gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
 
             osc.connect(filter);
             filter.connect(gain);
-            gain.connect(this.ctx.destination);
+            gain.connect(this.musicBus);
             osc.start(time);
             osc.stop(time + duration);
         });
@@ -699,7 +710,7 @@ class AudioManager {
         osc2.frequency.value = freq * 1.005; // Slight detune for thickness without wobble
 
         const gain = this.ctx.createGain();
-        const masterVol = 0.0505 * this.musicVolume;
+        const masterVol = 0.0505; // Bus handles master volume
         gain.gain.setValueAtTime(masterVol, time); // Boosted as Tri/Sine have less perceived volume
         gain.gain.exponentialRampToValueAtTime(0.00005, time + length);
 
@@ -710,7 +721,7 @@ class AudioManager {
         osc1.connect(filter);
         osc2.connect(filter);
         filter.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(this.musicBus);
 
         osc1.start(time);
         osc1.stop(time + length);
@@ -742,8 +753,8 @@ class AudioManager {
             osc.frequency.value = chordRoot * 4;
             const gain = this.ctx.createGain();
 
-            const masterVol = 0.0066 * this.musicVolume;
-            const rampVol = 0.0075 * this.musicVolume;
+            const masterVol = 0.0066; // Bus handles master volume
+            const rampVol = 0.0075;
 
             gain.gain.setValueAtTime(masterVol, time);
             gain.gain.linearRampToValueAtTime(rampVol, time + 0.15);
@@ -777,8 +788,8 @@ class AudioManager {
 
         // Env
         gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.1 * this.sfxVolume, now + 0.1);
-        gain.gain.linearRampToValueAtTime(0.1 * this.sfxVolume, now + 1.5);
+        gain.gain.linearRampToValueAtTime(0.1, now + 0.1);
+        gain.gain.linearRampToValueAtTime(0.1, now + 1.5);
         gain.gain.linearRampToValueAtTime(0, now + 2.0);
 
         osc.connect(gain);
@@ -792,7 +803,7 @@ class AudioManager {
         }
 
         // And Main Out
-        gain.connect(this.ctx.destination);
+        gain.connect(this.sfxBus);
 
         osc.start(now);
         lfo.start(now);
