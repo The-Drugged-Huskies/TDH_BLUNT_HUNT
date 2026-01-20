@@ -334,7 +334,7 @@ class Game {
         this.lastSpawnTime = performance.now();
 
         // Timer Logic
-        this.gameDuration = 60; // seconds
+        this.gameDuration = 15; // seconds
         this.startTime = performance.now();
 
         // Start Music
