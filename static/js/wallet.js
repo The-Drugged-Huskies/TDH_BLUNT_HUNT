@@ -1,16 +1,22 @@
+/**
+ * Wallet Interaction Module
+ * Handles connection to Dogechain, contract interaction, and UI updates.
+ */
+
 const DOGECHAIN_ID = '0x7D0'; // 2000 in hex
 const DOGECHAIN_CONFIG = {
     chainId: DOGECHAIN_ID,
     chainName: 'Dogechain Mainnet',
     nativeCurrency: {
         name: 'DOGE',
-        symbol: 'DOGE', // or wDOGE
+        symbol: 'DOGE',
         decimals: 18,
     },
     rpcUrls: ['https://rpc.dogechain.dog'],
     blockExplorerUrls: ['https://explorer.dogechain.dog/'],
 };
 
+// --- DOM Elements ---
 const connectBtn = document.getElementById('connect-wallet-btn');
 const startConnectBtn = document.getElementById('start-connect-btn');
 const startBtn = document.getElementById('start-btn');
@@ -18,10 +24,10 @@ const walletPopup = document.getElementById('wallet-popup');
 const popupBalance = document.getElementById('popup-balance');
 const disconnectBtn = document.getElementById('disconnect-btn');
 
+// --- State ---
 let currentAccount = null;
 
-// Expose for game.js
-// Expose for game.js
+// --- Exposed Helpers ---
 window.getCurrentWallet = () => currentAccount;
 
 window.showCustomModal = (message, isCheck = false, titleText = null) => {
@@ -74,6 +80,10 @@ window.showCustomModal = (message, isCheck = false, titleText = null) => {
     });
 };
 
+/**
+ * Initiates the connection to MetaMask.
+ * Switches network if necessary and sets up event listeners.
+ */
 async function connectWallet() {
     if (typeof window.ethereum === 'undefined') {
         await window.showCustomModal('Please install MetaMask to play on Dogechain!');
@@ -85,14 +95,14 @@ async function connectWallet() {
         const account = accounts[0];
 
         const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-
         if (chainId !== DOGECHAIN_ID) {
             await switchToDogechain();
         }
 
         currentAccount = account;
-        updateUI(account);
+        updateUI(currentAccount);
 
+        // Listen for account/network changes
         window.ethereum.on('accountsChanged', (accounts) => {
             currentAccount = accounts[0] || null;
             updateUI(currentAccount);
@@ -104,6 +114,10 @@ async function connectWallet() {
     }
 }
 
+/**
+ * Requests MetaMask to switch to Dogechain.
+ * Tries to add the chain configuration if it's missing.
+ */
 async function switchToDogechain() {
     try {
         await window.ethereum.request({
@@ -111,7 +125,7 @@ async function switchToDogechain() {
             params: [{ chainId: DOGECHAIN_ID }],
         });
     } catch (switchError) {
-        // This error code indicates that the chain has not been added to MetaMask.
+        // Error code 4902 indicates that the chain has not been added to MetaMask.
         if (switchError.code === 4902) {
             try {
                 await window.ethereum.request({
@@ -127,35 +141,35 @@ async function switchToDogechain() {
     }
 }
 
+/**
+ * Updates Key UI elements based on connection state.
+ * @param {string|null} account - The connected wallet address.
+ */
 function updateUI(account) {
     if (account) {
-        // Connected
+        // --- Connected State ---
         const shortAddr = `${account.substring(0, 4)}..${account.substring(account.length - 4)}`;
         connectBtn.innerText = shortAddr;
         connectBtn.classList.add('connected');
 
-        // Payout Check: Trigger immediately if round ended
-        // The Start Button will be activated inside checkAndTriggerPayout()
-
-        // Ensure buttons are disabled initially
+        // Logic handled in checkAndTriggerPayout()
         if (startConnectBtn) startConnectBtn.classList.add('hidden');
         if (startBtn) {
             startBtn.classList.remove('hidden');
-            startBtn.disabled = true;
+            startBtn.disabled = true; // Initially disabled until payout check passes
         }
 
         fetchBalance(account);
         window.checkAndTriggerPayout();
     } else {
-        // Disconnected
+        // --- Disconnected State ---
         connectBtn.innerText = 'CONNECT';
         connectBtn.classList.remove('connected');
-        if (walletPopup) walletPopup.classList.add('hidden'); // Ensure popup is closed
+        if (walletPopup) walletPopup.classList.add('hidden');
 
-        // Start Screen Logic
         if (startConnectBtn) {
             startConnectBtn.classList.remove('hidden');
-            startConnectBtn.disabled = true; // Disable until payout check
+            startConnectBtn.disabled = false; // "Start Game" effectively means "Connect" here
         }
         if (startBtn) {
             startBtn.classList.add('hidden');
@@ -180,7 +194,6 @@ function togglePopup() {
 
 async function fetchBalance(account) {
     try {
-        // Use the official Dogechain RPC for reliable data
         const rpcUrl = 'https://rpc.dogechain.dog';
         const provider = new ethers.providers.JsonRpcProvider(rpcUrl, {
             name: 'dogechain',
@@ -201,13 +214,9 @@ function initWallet() {
     console.log("Initializing Wallet...");
     if (connectBtn) {
         connectBtn.addEventListener('click', (e) => {
-            // e.stopPropagation(); // Allow bubbling if needed, but we connect directly here
-
-            // Trigger Pause if game is running
             if (window.game && window.game.isRunning) {
                 window.game.togglePause();
             }
-
             togglePopup();
         });
     }
@@ -233,7 +242,6 @@ async function checkConnection() {
             const accounts = await window.ethereum.request({ method: 'eth_accounts' });
             if (accounts.length > 0) {
                 const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-                // Note: chainId returns hex string
                 if (chainId === DOGECHAIN_ID) {
                     updateUI(accounts[0]);
                 }
@@ -327,12 +335,18 @@ window.checkAndTriggerPayout = async () => {
     }
 }
 
+// --- Leaderboard & Contract Helpers ---
+
 window.getPublicLeaderboardContract = () => {
     const rpcUrl = 'https://rpc.dogechain.dog';
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl, { name: 'dogechain', chainId: 2000 });
     return new ethers.Contract(LEADERBOARD_CONTRACT_ADDRESS, LEADERBOARD_ABI, provider);
 }
 
+/**
+ * Triggers the payment transaction for the game fee.
+ * @returns {Promise<{success: boolean, reason?: string}>}
+ */
 window.payEntryFee = async () => {
     try {
         const contract = window.getLeaderboardContract();
@@ -341,17 +355,12 @@ window.payEntryFee = async () => {
         const tx = await contract.startGame({
             value: ethers.utils.parseEther(GAME_COST_DOGE)
         });
-        console.log("------------------------------------------");
-        console.log("💰 Payment Sent!");
-        console.log(`Msg Value: ${GAME_COST_DOGE} DOGE`);
-        console.log(`Expected Split -> Owner: ${(parseFloat(GAME_COST_DOGE) * 0.25).toFixed(2)} | Pot: ${(parseFloat(GAME_COST_DOGE) * 0.75).toFixed(2)}`);
-        console.log(`Tx Hash: ${tx.hash}`);
-        console.log(`Explorer: https://explorer.dogechain.dog/tx/${tx.hash}`);
-        console.log("ℹ️ Check 'Internal Transactions' tab on Explorer to verify the 0.25 DOGE transfer.");
-        console.log("------------------------------------------");
+
+        // Debug info - kept for transparency during dev/beta
+        console.log(`Payment Sent: ${tx.hash}`);
 
         await tx.wait();
-        console.log("Payment confirmed! Game starting...");
+        console.log("Payment confirmed!");
         return { success: true };
     } catch (err) {
         console.error("Payment failed:", err);
@@ -359,6 +368,10 @@ window.payEntryFee = async () => {
     }
 };
 
+/**
+ * Fetches the current Pot size and End Time.
+ * @returns {Promise<{pot: string, endTime: number}|null>}
+ */
 window.fetchPotInfo = async () => {
     try {
         const contract = window.getPublicLeaderboardContract();
@@ -393,13 +406,15 @@ window.fetchLeaderboard = async () => {
     }
 };
 
+/**
+ * Submits the high score to the blockchain.
+ * @param {number} score 
+ * @returns {Promise<{success: boolean, hash?: string, reason?: string}>}
+ */
 window.submitHighScore = async (score) => {
     try {
         const contract = window.getLeaderboardContract();
         if (!contract) throw new Error("Wallet not connected");
-
-        // Note: Credits are checked on-chain, but good to have UI feedback if 0 credits.
-        // For now we rely on the contract revert.
 
         const tx = await contract.submitScore(score);
         console.log("Transaction sent:", tx.hash);
@@ -414,8 +429,6 @@ window.submitHighScore = async (score) => {
 
 window.checkLeaderboardEligibility = async (score) => {
     try {
-        // Eligibility now implies having a credit AND being high enough score
-        // But for simplicity, we just check score vs lowest. Credit check happens at Start.
         const contract = window.getPublicLeaderboardContract();
         if (LEADERBOARD_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") return false;
 

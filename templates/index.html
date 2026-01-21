@@ -5,10 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Blunt Hunt - Dogechain Edition</title>
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <!-- Styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Dependencies -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"
         type="application/javascript"></script>
 </head>
@@ -16,65 +19,72 @@
 <body>
 
     <div id="nes-wrapper">
-        <div id="game-container">
+        <main id="game-container">
             <!-- Top Header (Leaderboard & Wallet) -->
-            <div id="nes-header">
+            <header id="nes-header">
                 <div id="header-left">
-                    <button id="leaderboard-btn" class="btn-secondary header-btn">LEADERBOARD</button>
+                    <button id="leaderboard-btn" class="btn-secondary header-btn"
+                        aria-label="Open Leaderboard">LEADERBOARD</button>
                     <div id="timer-display" class="hidden">TIME: 60</div>
-
                 </div>
                 <div id="wallet-container">
-                    <button id="connect-wallet-btn" class="btn-wallet">CONNECT</button>
+                    <button id="connect-wallet-btn" class="btn-wallet" aria-label="Connect Wallet">CONNECT</button>
                     <!-- Popup Menu -->
                     <div id="wallet-popup" class="hidden">
                         <div id="popup-balance">0.00 DOGE</div>
                         <button id="disconnect-btn" class="btn-secondary">DISCONNECT</button>
                     </div>
                 </div>
-            </div>
+            </header>
 
             <!-- Background Layer -->
             <div id="game-background"></div>
 
-            <!-- Canvas sits on top of everything now -->
-            <canvas id="gameCanvas"></canvas>
+            <!-- Canvas Layer -->
+            <canvas id="gameCanvas" aria-label="Game Screen"></canvas>
 
+            <!-- UI Layer -->
             <div id="ui-layer">
-                <div id="start-screen" class="overlay">
+                <!-- Start Screen -->
+                <section id="start-screen" class="overlay">
                     <h1 class="title">BLUNT HUNT</h1>
                     <p class="subtitle" style="font-size: calc(0.9rem - 2px);">DRUGGED HUSKIES EDITION</p>
 
-                    <!-- Pot Display (Moved) -->
+                    <!-- Pot Display -->
                     <div id="pot-display"
-                        style="color: #FFD700; font-size: 1.2rem; margin-bottom: 5px; text-shadow: 2px 2px #000;">POT:
-                        0.00</div>
-                    <div id="pot-timer" style="font-size: 0.7rem; color: #ccc; margin-bottom: 20px;">NEXT PAYOUT: 00:00
+                        style="color: #FFD700; font-size: 1.2rem; margin-bottom: 5px; text-shadow: 2px 2px #000;">
+                        POT: 0.00
+                    </div>
+                    <div id="pot-timer" style="font-size: 0.7rem; color: #ccc; margin-bottom: 20px;">
+                        NEXT PAYOUT: 00:00
                     </div>
 
-                    <!-- Wallet Connect Flow -->
+                    <!-- Flow Buttons -->
                     <button id="start-connect-btn" class="btn-primary btn-connect-start" disabled>START GAME</button>
                     <button id="start-btn" class="btn-primary hidden" disabled>START GAME</button>
 
                     <button id="settings-btn" class="btn-secondary">SETTINGS</button>
 
+                    <!-- Settings Popup -->
                     <div id="settings-popup" class="settings-popup hidden">
                         <div class="settings-title">AUDIO SETTINGS</div>
                         <div class="settings-row">
                             <span>MUSIC</span>
                             <div class="slide-container">
-                                <input type="range" min="0" max="100" value="100" class="slider" id="music-volume">
+                                <input type="range" min="0" max="100" value="100" class="slider" id="music-volume"
+                                    aria-label="Music Volume">
                             </div>
                         </div>
                         <div class="settings-row">
                             <span>EFFECTS</span>
                             <div class="slide-container">
-                                <input type="range" min="0" max="100" value="100" class="slider" id="sfx-volume">
+                                <input type="range" min="0" max="100" value="100" class="slider" id="sfx-volume"
+                                    aria-label="Effects Volume">
                             </div>
                         </div>
                         <div class="settings-row">
                             <span>KEY</span>
-                            <select id="key-select" class="nes-select">
+                            <select id="key-select" class="nes-select" aria-label="Musical Key">
                                 <option value="F">F</option>
                                 <option value="G" selected>G</option>
                                 <option value="Ab">Ab</option>
@@ -84,12 +94,12 @@
                         </div>
                         <button id="close-settings-btn" class="btn-secondary small">CLOSE</button>
                     </div>
-                </div>
+                </section>
 
-                <div id="leaderboard-screen" class="overlay hidden">
+                <!-- Leaderboard Screen -->
+                <section id="leaderboard-screen" class="overlay hidden">
                     <h1 class="title" style="font-size: 2rem;">TOP 10</h1>
                     <div id="leaderboard-list">
-                        <!-- JS Populates this -->
                         <div class="leaderboard-header">
                             <span>#</span><span>NAME</span><span>SCORE</span>
                         </div>
@@ -98,24 +108,26 @@
 
                     <div id="leaderboard-controls"
                         style="display: flex; justify-content: center; align-items: center; gap: 20px; margin-bottom: 20px;">
-                        <button id="prev-page-btn" class="nav-arrow">&lt;</button>
+                        <button id="prev-page-btn" class="nav-arrow" aria-label="Previous Page">&lt;</button>
                         <button id="close-leaderboard-btn" class="btn-secondary" style="margin-top: 0;">CLOSE</button>
-                        <button id="next-page-btn" class="nav-arrow">&gt;</button>
+                        <button id="next-page-btn" class="nav-arrow" aria-label="Next Page">&gt;</button>
                     </div>
 
                     <div id="leaderboard-hud">
-                        <!-- Reserved for future buttons -->
+                        <!-- Reserved -->
                     </div>
-                </div>
+                </section>
 
-                <div id="game-over-screen" class="overlay hidden">
+                <!-- Game Over Screen -->
+                <section id="game-over-screen" class="overlay hidden">
                     <h1 class="title">GAME OVER</h1>
                     <p class="subtitle">SCORE: <span id="final-score">0</span></p>
 
                     <div id="submit-score-container" class="hidden">
                         <p id="submit-status-text"
-                            style="font-size: 0.8rem; margin-bottom: 15px; color: #83d313; display: none;">NEW HIGH
-                            SCORE!</p>
+                            style="font-size: 0.8rem; margin-bottom: 15px; color: #83d313; display: none;">
+                            NEW HIGH SCORE!
+                        </p>
                         <button id="submit-score-btn" class="btn-primary">SUBMIT</button>
                         <button id="skip-submit-btn" class="btn-secondary">SKIP</button>
                     </div>
@@ -124,14 +136,15 @@
                         <button id="restart-btn" class="btn-primary">TRY AGAIN</button>
                         <button id="exit-btn" class="btn-secondary">EXIT</button>
                     </div>
-                </div>
+                </section>
 
-                <div id="pause-screen" class="overlay hidden">
+                <!-- Pause Screen -->
+                <section id="pause-screen" class="overlay hidden">
                     <h1 class="title">PAUSED</h1>
                     <p class="subtitle">CLICK TO RESUME</p>
-                </div>
+                </section>
 
-                <!-- Generic NES Modal -->
+                <!-- Modal -->
                 <div id="custom-modal" class="overlay hidden" style="z-index: 2000;">
                     <h1 id="modal-title" class="title" style="font-size: 1.5rem; margin-bottom: 20px;">NOTICE</h1>
                     <p id="modal-message" class="subtitle"
@@ -144,7 +157,7 @@
                 </div>
             </div>
 
-            <!-- NES Style Bottom HUD -->
+            <!-- NES HUD -->
             <div id="nes-hud" class="hidden">
                 <div class="hud-section left">
                     <div class="hud-label">SCORE</div>
@@ -153,9 +166,7 @@
                 <div class="hud-section center">
                     <div class="hit-row">
                         <div class="hud-label">HIT</div>
-                        <div id="hit-markers">
-                            <!-- Populated by JS -->
-                        </div>
+                        <div id="hit-markers"></div>
                     </div>
                 </div>
                 <div class="hud-section right">
@@ -163,14 +174,15 @@
                     <div id="round-display">R=1</div>
                 </div>
             </div>
-        </div>
+        </main>
 
-        <div id="footer">
-            blunt hunt v.0.5 | <a id="faq-link" href="#" style="color: inherit; text-decoration: none;">faq</a> | <a
-                href="#" style="color: inherit; text-decoration: none;">roadmap</a>
-        </div>
+        <footer id="footer">
+            blunt hunt v.0.6 | <a id="faq-link" href="#" class="footer-link">faq</a> | <a href="#"
+                class="footer-link">roadmap</a>
+        </footer>
     </div>
 
+    <!-- Scripts -->
     <script src="{{ url_for('static', filename='js/sprite.js') }}"></script>
     <script src="{{ url_for('static', filename='js/wallet.js') }}"></script>
     <script src="{{ url_for('static', filename='js/audio.js') }}"></script>

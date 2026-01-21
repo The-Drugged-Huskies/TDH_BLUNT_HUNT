@@ -4,6 +4,9 @@
  * Coordinates interaction between the Slingshot, Husky, and Blunts.
  */
 class Game {
+    /**
+     * @param {Object} assets - Preloaded image assets map.
+     */
     constructor(assets) {
         /** @type {HTMLCanvasElement} */
         this.canvas = document.getElementById('gameCanvas');
@@ -14,51 +17,54 @@ class Game {
         // Expose game instance for wallet.js interaction
         window.game = this;
 
+        // --- Configuration ---
         // Fixed NES-like Resolution
         this.canvas.width = 320;
-        this.canvas.height = 240; // Increased height to include HUD area for canvas coverage
+        this.canvas.height = 240;
         this.width = 320;
         this.height = 240;
+        this.hudHeight = 40; // Visual height of HUD in game coordinates
 
-        this.hudHeight = 40; // Visual height of HUD in game coordinates (approx)
-
-        // Disable smoothing for pixel look
+        // Disable smoothing for crisp pixel art look
         this.ctx.imageSmoothingEnabled = false;
 
+        // --- Entities ---
         this.slingshot = new Slingshot(this);
         this.husky = null;
         this.blunts = [];
-        this.score = 0;
         this.particles = new ParticleManager(this);
+
+        // --- Game State ---
+        this.score = 0;
         this.isRunning = false;
         this.isPaused = false;
-        this.pauseScreen = document.getElementById('pause-screen');
 
-        // Resume on Pause Screen Click
+        // Pause Screen Overlay
+        this.pauseScreen = document.getElementById('pause-screen');
         if (this.pauseScreen) {
             this.pauseScreen.addEventListener('click', () => {
                 if (this.isPaused) this.togglePause();
             });
         }
 
-        // Difficulty settings
-        this.bluntSpawnRate = 2000; //ms
+        // --- Difficulty & Physics ---
+        this.bluntSpawnRate = 2000; // ms
         this.bluntLifeTime = 5000; // ms, decreases over time
-        // State
         this.round = 1;
         this.hitsInRound = 0;
         this.speedMultiplier = 1;
         this.lastSpawnTime = 0;
 
-        // Combo System
+        // --- Combo System ---
         this.combo = 0;
         this.multiplier = 1;
         this.shotHit = false;
 
-        // Audio
+        // --- Audio System ---
         this.audio = new AudioManager();
 
-        // Collision Helper (Off-screen)
+        // --- Helpers ---
+        // Off-screen canvas for pixel-perfect collision detection
         this.collisionCanvas = document.createElement('canvas');
         this.collisionCtx = this.collisionCanvas.getContext('2d', { willReadFrequently: true });
 
@@ -279,10 +285,15 @@ class Game {
         }
     }
 
+    /**
+     * Starts the game session.
+     * Handles wallet checks, resets state, and initiates the game loop.
+     */
     async start() {
         if (this.isRunning) return;
 
-        // ALWAYS Force Payment (Ticket System)
+        // --- Payout Check Override ---
+        // If the pot timer has expired, force a payout check instead of starting.
         if (window.payEntryFee) {
             this.startBtn.disabled = true;
             if (this.restartBtn) this.restartBtn.disabled = true;
@@ -360,6 +371,10 @@ class Game {
         requestAnimationFrame(this.loop);
     }
 
+    /**
+     * Ends the current game session.
+     * Displays the game over screen, handles high score submission eligibility.
+     */
     async gameOver() {
         this.isRunning = false;
         this.ctx.clearRect(0, 0, this.width, this.height);
@@ -378,8 +393,6 @@ class Game {
         // Check Eligibility for Leaderboard
         const wallet = window.getCurrentWallet ? window.getCurrentWallet() : null;
 
-        console.log("GameOver Debug: Score", this.score, "Wallet", wallet);
-
         if (wallet) {
             // Show Submit UI Immediately
             this.submitScoreContainer.classList.remove('hidden');
@@ -395,7 +408,6 @@ class Game {
                 });
             }
         } else {
-            console.log("No wallet connected, showing standard menu.");
             this.showGameOverMenu();
         }
 
@@ -543,6 +555,10 @@ class Game {
         }
     }
 
+    /**
+     * Updates the game timer and handles time-based events.
+     * @param {number} timestamp - Current high-resolution time.
+     */
     updateTimer(timestamp) {
         const elapsed = (timestamp - this.startTime) / 1000;
         const remaining = Math.max(0, this.gameDuration - elapsed);
@@ -564,13 +580,16 @@ class Game {
         // No timer display in NES HUD for now, or could map to one of the boxes
     }
 
+    /**
+     * Main Game Loop.
+     * Handles logic updates and rendering.
+     * @param {number} timestamp - Provided by requestAnimationFrame.
+     */
     loop(timestamp) {
         if (!this.isRunning) return;
         if (this.isPaused) return;
 
         this.ctx.clearRect(0, 0, this.width, this.height);
-
-
 
         // Background is now handled by CSS/DOM layer behind canvas
         // HUD is also a DOM element behind canvas but z-index 5
