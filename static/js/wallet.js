@@ -291,9 +291,9 @@ window.checkAndTriggerPayout = async () => {
             const lb = await contract.getLeaderboard();
             let msg = "Round ended! ";
             if (lb.length > 0 && pot.gt(0)) {
-                msg += "Be friendly and click OK to distribute the Prize Pool and restart the tournament? You will join a monthly raffle as thank you!";
+                msg += "Be friendly and click OK to distribute the Prize Pool and restart the tournament?";
             } else {
-                msg += "No winners! Be friendly and click OK to reset the timer and restart the tournament?";
+                msg += "No winners! Be friendly and click OK to distribute Prize Pool, reset the timer and restart the tournament?";
             }
 
             if (await window.showCustomModal(msg, true)) {
