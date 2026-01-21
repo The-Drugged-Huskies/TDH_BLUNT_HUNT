@@ -129,13 +129,8 @@ function updateUI(account) {
         connectBtn.innerText = shortAddr;
         connectBtn.classList.add('connected');
 
-        // Start Screen Logic
-        if (startConnectBtn) startConnectBtn.classList.add('hidden');
-        if (startBtn) startBtn.classList.remove('hidden');
-
-        fetchBalance(account);
-
         // Payout Check: Trigger immediately if round ended
+        // The Start Button will be activated inside checkAndTriggerPayout()
         window.checkAndTriggerPayout();
     } else {
         // Disconnected
@@ -257,6 +252,12 @@ window.getLeaderboardContract = () => {
     return new ethers.Contract(LEADERBOARD_CONTRACT_ADDRESS, LEADERBOARD_ABI, signer);
 };
 
+// Helper to activate the green start button
+function activateStartButton() {
+    if (startConnectBtn) startConnectBtn.classList.add('hidden');
+    if (startBtn) startBtn.classList.remove('hidden');
+}
+
 window.checkAndTriggerPayout = async () => {
     try {
         const contract = window.getLeaderboardContract();
@@ -286,11 +287,20 @@ window.checkAndTriggerPayout = async () => {
                 } catch (err) {
                     console.error("Payout failed:", err);
                     await window.showCustomModal("Payout failed or cancelled.");
+                    activateStartButton(); // Activate on failure
                 }
+            } else {
+                // User cancelled the payout modal
+                activateStartButton();
             }
+        } else {
+            // Timer is running, safe to start
+            activateStartButton();
         }
     } catch (e) {
         console.error("Payout Check Error:", e);
+        // Activate anyway so user isn't stuck
+        activateStartButton();
     }
 }
 
