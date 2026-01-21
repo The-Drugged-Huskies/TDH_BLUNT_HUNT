@@ -131,6 +131,7 @@ function updateUI(account) {
 
         // Payout Check: Trigger immediately if round ended
         // The Start Button will be activated inside checkAndTriggerPayout()
+        fetchBalance(account);
         window.checkAndTriggerPayout();
     } else {
         // Disconnected
