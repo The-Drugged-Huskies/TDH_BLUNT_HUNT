@@ -47,14 +47,15 @@ Vercel will upload/build. **BUT IT WILL FAIL or ERROR at runtime** because we ha
 
 ## 5. Configure Secrets (CRITICAL)
 
-Your backend needs the **Signer Private Key** to function.
+Since `env.json` is ignored by git (for security), it will **NOT** be uploaded to Vercel.
+You **MUST** set the environment variable in Vercel for the game to work.
 
 1. Go to your Vercel Dashboard: [vercel.com/dashboard](https://vercel.com/dashboard)
-2. Click on your new project (`tdh-blunt-hunt`).
+2. Click on your project (`tdh-blunt-hunt`).
 3. Go to **Settings** -> **Environment Variables**.
 4. Add a new variable:
     - **Key**: `SIGNER_PRIVATE_KEY`
-    - **Value**: `0xYOUR_PRIVATE_KEY_FROM_STEP_2_OF_INSTALL_MD`
+    - **Value**: `0x...` (Copy from your local `env.json`)
 5. Click **Save**.
 
 ## 6. Redeploy
