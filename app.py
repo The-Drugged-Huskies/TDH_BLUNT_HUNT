@@ -7,6 +7,12 @@ This module serves the game frontend and handles leaderboard score submissions.
 import json
 import os
 from flask import Flask, render_template, request, jsonify, send_from_directory
+from web3 import Web3
+from eth_account import Account
+from eth_account.messages import encode_defunct
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -85,6 +91,61 @@ def submit_score():
 
     except Exception as e:
         print(f"Error submitting score: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/sign-score', methods=['POST'])
+def sign_score():
+    """
+    Signs a score for the blockchain leaderboard.
+    """
+    try:
+        private_key = os.getenv('SIGNER_PRIVATE_KEY')
+        
+        # Testing override: Try env.json
+        if not private_key and os.path.exists('env.json'):
+            try:
+                with open('env.json', 'r') as f:
+                    config = json.load(f)
+                    private_key = config.get('SIGNER_PRIVATE_KEY')
+            except Exception:
+                pass
+
+        if not private_key:
+            return jsonify({"success": False, "error": "Signer not configured"}), 500
+
+        data = request.json
+        player = data.get('player')
+        try:
+            score = int(data.get('score'))
+        except (ValueError, TypeError):
+             return jsonify({"success": False, "error": "Invalid score"}), 400
+             
+        contract_addr = data.get('contract')
+
+        if not player or not contract_addr:
+             return jsonify({"success": False, "error": "Missing data"}), 400
+
+        # Ensure addresses are checksummed
+        try:
+            player = Web3.to_checksum_address(player)
+            contract_addr = Web3.to_checksum_address(contract_addr)
+        except ValueError:
+            return jsonify({"success": False, "error": "Invalid address format"}), 400
+
+        # Keccak256(player, score, contract) - MUST MATCH SOLIDITY
+        msg_hash = Web3.solidity_keccak(
+            ['address', 'uint256', 'address'],
+            [player, score, contract_addr]
+        )
+        
+        # Sign
+        message = encode_defunct(hexstr=msg_hash.hex())
+        signed_message = Account.sign_message(message, private_key)
+
+        return jsonify({"success": True, "signature": signed_message.signature.hex()})
+
+    except Exception as e:
+        print(f"Sign Error: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 

@@ -199,6 +199,12 @@ class Game {
         if (this.prevPageBtn) this.prevPageBtn.addEventListener('click', () => this.changeLeaderboardPage(-1));
         if (this.nextPageBtn) this.nextPageBtn.addEventListener('click', () => this.changeLeaderboardPage(1));
 
+        // Leaderboard Tabs
+        const tabHourly = document.getElementById('tab-hourly');
+        const tabAllTime = document.getElementById('tab-alltime');
+        if (tabHourly) tabHourly.addEventListener('click', () => this.switchLeaderboardTab('hourly'));
+        if (tabAllTime) tabAllTime.addEventListener('click', () => this.switchLeaderboardTab('alltime'));
+
         // Pot Polling
         this.initPotPolling();
 
@@ -240,9 +246,22 @@ class Game {
                 }
                 if (potTimer) {
                     const timeLeft = Math.max(0, info.endTime - Date.now());
-                    const mins = Math.floor(timeLeft / 60000);
-                    const secs = Math.floor((timeLeft % 60000) / 1000);
-                    potTimer.innerText = `NEXT PAYOUT: ${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
+                    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const mins = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                    const secs = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+                    let timeStr = "";
+                    if (days > 0) {
+                        timeStr = `${days}d ${hours}h ${mins}m`;
+                    } else if (hours > 0) {
+                        timeStr = `${hours}:${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                    } else {
+                        timeStr = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                    }
+
+                    potTimer.innerText = `NEXT PAYOUT: ${timeStr}`;
                     potTimer.classList.remove('hidden');
                 }
             }
@@ -362,7 +381,19 @@ class Game {
         this.lastSpawnTime = performance.now();
 
         // Timer Logic
-        this.gameDuration = 60; // seconds
+        this.gameDuration = 60; // Fallback
+
+        // Async Fetch Config (if connected)
+        if (window.fetchGameConfig) {
+            window.fetchGameConfig().then(cfg => {
+                if (cfg && cfg.duration) {
+                    this.gameDuration = cfg.duration;
+                    // Force update timer display if waiting
+                    this.updateTimer(performance.now());
+                }
+            });
+        }
+
         this.startTime = performance.now();
 
         // Start Music
@@ -433,9 +464,10 @@ class Game {
         this.submitScoreBtn.disabled = false;
 
         if (result.success) {
-            // alert("Score Submitted Successfully!"); // Removed alert
+            if (window.showCustomModal) window.showCustomModal("SCORE SUBMITTED SECURELY!", false, "SUCCESS");
         } else {
-            // alert("Submission Failed: " + (result.reason || "Unknown Error")); // Removed alert
+            if (window.showCustomModal) window.showCustomModal("SUBMISSION FAILED:\n" + (result.reason || "Unknown Error"), false, "ERROR");
+            console.error("Submission Failed Details:", result);
         }
 
         // Always show menu after attempt
@@ -799,23 +831,53 @@ class Game {
         this.leaderboardScreen.classList.remove('hidden');
         document.getElementById('start-screen').classList.add('hidden');
 
+        // Default to Hourly
+        this.switchLeaderboardTab('hourly');
+    }
+
+    async switchLeaderboardTab(type) {
+        this.currentLeaderboardType = type;
+
+        // Update Buttons
+        const hourlyBtn = document.getElementById('tab-hourly');
+        const allTimeBtn = document.getElementById('tab-alltime');
+
+        if (hourlyBtn && allTimeBtn) {
+            if (type === 'hourly') {
+                hourlyBtn.classList.add('active-tab');
+                hourlyBtn.style.background = '#209cee';
+                allTimeBtn.classList.remove('active-tab');
+                allTimeBtn.style.background = '';
+            } else {
+                allTimeBtn.classList.add('active-tab');
+                allTimeBtn.style.background = '#209cee';
+                hourlyBtn.classList.remove('active-tab');
+                hourlyBtn.style.background = '';
+            }
+        }
+
         // Loading State
         this.leaderboardRows.innerHTML = '<p class="nes-text is-primary" style="text-align:center; margin-top: 20px;">Loading from Dogechain...</p>';
+        this.leaderboardData = []; // Clear current
 
         try {
-            // Fetch from Chain
             let data = [];
-            if (window.fetchLeaderboard) {
-                data = await window.fetchLeaderboard();
+            if (type === 'hourly') {
+                if (window.fetchLeaderboard) {
+                    data = await window.fetchLeaderboard();
+                }
+            } else {
+                if (window.fetchAllTimeLeaderboard) {
+                    data = await window.fetchAllTimeLeaderboard();
+                }
             }
 
             // Fallback or empty
             if (!data || data.length === 0) {
-                this.leaderboardRows.innerHTML = '<p style="text-align:center;">No records found or Contract not set.</p>';
-                this.leaderboardData = [];
+                this.leaderboardRows.innerHTML = '<p style="text-align:center;">No records found.</p>';
             } else {
-                // Sort just in case? Contract is sorted, but safe to ensure.
-                // Contract returns high->low, so we are good.
+                // Ensure data is sorted (High -> Low)
+                data.sort((a, b) => b.score - a.score);
 
                 // Add Ranks
                 data = data.map((item, index) => ({ ...item, rank: index + 1 }));

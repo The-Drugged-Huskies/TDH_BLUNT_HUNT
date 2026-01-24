@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 /**
  * @title Leaderboard
@@ -14,6 +15,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  *      - Leaderboard resets after payout.
  */
 contract Leaderboard is Ownable {
+    using ECDSA for bytes32;
+
     struct Score {
         address player;
         uint256 score;
@@ -24,10 +27,13 @@ contract Leaderboard is Ownable {
     uint256 constant MAX_LEADERBOARD_SIZE = 100;
 
     // Game Config
-    // Game Config
     uint256 public gameCost = 1 ether; // 1 DOGE
+    uint256 public gameInterval = 1 hours; // Default duration
     uint256 public prizePool;
     uint256 public gameEndTime;
+    
+    // Security
+    address public signerAddress;
 
     // Ticket: True if user has paid for a game but not yet submitted
     mapping(address => bool) public hasTicket;
@@ -36,29 +42,12 @@ contract Leaderboard is Ownable {
     event PrizePaid(address indexed winner, uint256 amount, uint256 timestamp);
     event GameStarted(address indexed player, uint256 timestamp);
     event PotUpdated(uint256 newAmount);
+    event ScoreSubmitted(address indexed player, uint256 score);
 
     event PaymentFailed(address indexed recipient, uint256 amount);
 
     constructor() {
-        gameEndTime = getNextTeatime(block.timestamp);
-    }
-
-    /**
-     * @dev Calculates the next XX:42:00 timestamp.
-     *      - If now is 10:30, returns 10:42.
-     *      - If now is 10:50, returns 11:42.
-     */
-    function getNextTeatime(uint256 _now) public pure returns (uint256) {
-        uint256 currentSeconds = _now % 3600; // Seconds into the current hour
-        uint256 targetSeconds = 42 * 60;      // 42nd minute in seconds (2520)
-
-        if (currentSeconds < targetSeconds) {
-            // It's before :42 this hour -> Go to :42 this hour
-            return _now + (targetSeconds - currentSeconds);
-        } else {
-            // It's after :42 -> Go to :42 next hour
-            return _now + (3600 - currentSeconds) + targetSeconds;
-        }
+        gameEndTime = block.timestamp + gameInterval;
     }
 
     /**
@@ -92,12 +81,28 @@ contract Leaderboard is Ownable {
 
     /**
      * @dev Submits a score. Consumes Ticket.
+     *      Requires a server-side signature if signerAddress is set.
      */
-    function submitScore(uint256 _score) external {
+    function submitScore(uint256 _score, bytes memory _signature) external {
         require(hasTicket[msg.sender] == true, "No ticket. Pay to play.");
         
+        // Security Check
+        if (signerAddress != address(0)) {
+            // Recreate the message hash that the server signed
+            // Logic: keccak256(player address + score + this contract address)
+            bytes32 hash = keccak256(abi.encodePacked(msg.sender, _score, address(this)));
+            
+            // Verify signature
+            // ECDSA.recover(hash.toEthSignedMessageHash(), signature) == signer
+            address recovered = hash.toEthSignedMessageHash().recover(_signature);
+            require(recovered == signerAddress, "Invalid signature");
+        }
+
         // Consume Ticket
         hasTicket[msg.sender] = false;
+
+        // EMIT EVENT FOR ALL-TIME INDEXER
+        emit ScoreSubmitted(msg.sender, _score);
 
         // Check availability (Timer might have expired during gameplay)
         distributePrize();
@@ -115,6 +120,10 @@ contract Leaderboard is Ownable {
             _insertScore(_score);
         }
     }
+    
+    function setSignerAddress(address _signer) external onlyOwner {
+        signerAddress = _signer;
+    }
 
     /**
      * @dev Public: Triggered externally (by bot/frontend) OR internally (by game actions).
@@ -130,7 +139,7 @@ contract Leaderboard is Ownable {
                 // --- EFFECTS (Reset State First) ---
                 prizePool = 0;
                 delete leaderboard; 
-                gameEndTime = getNextTeatime(block.timestamp);
+                gameEndTime = block.timestamp + gameInterval;
 
                 // --- INTERACTIONS (External Call Last) ---
                 if (amount > 0) {
@@ -145,7 +154,7 @@ contract Leaderboard is Ownable {
                 }
             } else {
                 // No players? Just restart the timer, keep the pot.
-                gameEndTime = getNextTeatime(block.timestamp);
+                gameEndTime = block.timestamp + gameInterval;
             }
         }
     }
@@ -187,6 +196,23 @@ contract Leaderboard is Ownable {
     }
 
     // --- Admin ---
+
+    function setGameInterval(uint256 _interval) external onlyOwner {
+        gameInterval = _interval;
+    }
+
+    function setGameCost(uint256 _newCost) external onlyOwner {
+        gameCost = _newCost;
+    }
+
+    function setGameEndTime(uint256 _timestamp) external onlyOwner {
+        gameEndTime = _timestamp;
+    }
+
+    // Emergency: Force payout/reset if stuck
+    function forceEndedState() external onlyOwner {
+        gameEndTime = block.timestamp; // Expire immediately
+    }
 
     function recoverFunds() external onlyOwner {
         (bool success, ) = payable(owner()).call{value: address(this).balance}("");

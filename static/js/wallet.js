@@ -1,276 +1,538 @@
 /**
+
  * Wallet Interaction Module
+
  * Handles connection to Dogechain, contract interaction, and UI updates.
+
  */
 
+
+
 const DOGECHAIN_ID = '0x7D0'; // 2000 in hex
+
 const DOGECHAIN_CONFIG = {
+
     chainId: DOGECHAIN_ID,
+
     chainName: 'Dogechain Mainnet',
+
     nativeCurrency: {
+
         name: 'DOGE',
+
         symbol: 'DOGE',
+
         decimals: 18,
+
     },
+
     rpcUrls: ['https://rpc.dogechain.dog'],
+
     blockExplorerUrls: ['https://explorer.dogechain.dog/'],
+
 };
 
+
+
 // --- DOM Elements ---
+
 const connectBtn = document.getElementById('connect-wallet-btn');
+
 const startConnectBtn = document.getElementById('start-connect-btn');
+
 const startBtn = document.getElementById('start-btn');
+
 const walletPopup = document.getElementById('wallet-popup');
+
 const popupBalance = document.getElementById('popup-balance');
+
 const disconnectBtn = document.getElementById('disconnect-btn');
 
+
+
 // --- State ---
+
 let currentAccount = null;
 
+
+
 // --- Exposed Helpers ---
+
 window.getCurrentWallet = () => currentAccount;
 
+
+
 window.showCustomModal = (message, isCheck = false, titleText = null) => {
+
     return new Promise((resolve) => {
+
         const modal = document.getElementById('custom-modal');
+
         const title = document.getElementById('modal-title');
+
         const msg = document.getElementById('modal-message');
+
         const okBtn = document.getElementById('modal-ok-btn');
+
         const cancelBtn = document.getElementById('modal-cancel-btn');
 
+
+
         if (!modal) {
+
             // Fallback
+
             if (isCheck) resolve(confirm(message));
+
             else { alert(message); resolve(true); }
+
             return;
+
         }
+
+
 
         msg.innerText = message;
+
         if (titleText) {
+
             title.innerText = titleText;
+
             title.style.color = '#fc9838'; // Defaulting to orange/gold for custom titles
+
         } else {
+
             title.innerText = isCheck ? "CONFIRM" : "NOTICE";
+
             title.style.color = isCheck ? '#fc9838' : '#83d313'; // Orange for confirm, Green for notice
+
         }
 
+
+
         // Reset listeners by cloning
+
         const newOk = okBtn.cloneNode(true);
+
         const newCancel = cancelBtn.cloneNode(true);
+
         okBtn.parentNode.replaceChild(newOk, okBtn);
+
         cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+
+
 
         modal.classList.remove('hidden');
 
+
+
         if (isCheck) {
+
             newCancel.classList.remove('hidden');
+
         } else {
+
             newCancel.classList.add('hidden');
+
         }
+
+
 
         newOk.onclick = () => {
+
             modal.classList.add('hidden');
+
             resolve(true);
+
         };
+
+
 
         newCancel.onclick = () => {
+
             modal.classList.add('hidden');
+
             resolve(false);
+
         };
+
     });
+
 };
 
+
+
 /**
+
  * Initiates the connection to MetaMask.
+
  * Switches network if necessary and sets up event listeners.
+
  */
+
 async function connectWallet() {
+
     if (typeof window.ethereum === 'undefined') {
+
         await window.showCustomModal('Please install MetaMask to play on Dogechain!');
+
         return;
+
     }
 
+
+
     try {
+
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+
         const account = accounts[0];
 
+
+
         const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+
         if (chainId !== DOGECHAIN_ID) {
+
             await switchToDogechain();
+
         }
+
+
 
         currentAccount = account;
+
         updateUI(currentAccount);
 
+
+
         // Listen for account/network changes
+
         window.ethereum.on('accountsChanged', (accounts) => {
+
             currentAccount = accounts[0] || null;
+
             updateUI(currentAccount);
+
         });
+
         window.ethereum.on('chainChanged', () => window.location.reload());
 
+
+
     } catch (error) {
+
         console.error('Wallet Connection Error:', error);
+
     }
+
 }
 
+
+
 /**
+
  * Requests MetaMask to switch to Dogechain.
+
  * Tries to add the chain configuration if it's missing.
+
  */
+
 async function switchToDogechain() {
+
     try {
+
         await window.ethereum.request({
+
             method: 'wallet_switchEthereumChain',
+
             params: [{ chainId: DOGECHAIN_ID }],
+
         });
+
     } catch (switchError) {
+
         // Error code 4902 indicates that the chain has not been added to MetaMask.
+
         if (switchError.code === 4902) {
+
             try {
+
                 await window.ethereum.request({
+
                     method: 'wallet_addEthereumChain',
+
                     params: [DOGECHAIN_CONFIG],
+
                 });
+
             } catch (addError) {
+
                 console.error('Error adding Dogechain:', addError);
+
             }
+
         } else {
+
             console.error('Error switching network:', switchError);
+
         }
+
     }
+
 }
 
+
+
 /**
+
  * Updates Key UI elements based on connection state.
+
  * @param {string|null} account - The connected wallet address.
+
  */
+
 function updateUI(account) {
+
     if (account) {
+
         // --- Connected State ---
+
         const shortAddr = `${account.substring(0, 4)}..${account.substring(account.length - 4)}`;
+
         connectBtn.innerText = shortAddr;
+
         connectBtn.classList.add('connected');
 
+
+
         // Logic handled in checkAndTriggerPayout()
+
         if (startConnectBtn) startConnectBtn.classList.add('hidden');
+
         if (startBtn) {
+
             startBtn.classList.remove('hidden');
+
             startBtn.disabled = true; // Initially disabled until payout check passes
+
         }
+
+
 
         fetchBalance(account);
+
         window.checkAndTriggerPayout();
+
     } else {
+
         // --- Disconnected State ---
+
         connectBtn.innerText = 'CONNECT';
+
         connectBtn.classList.remove('connected');
+
         if (walletPopup) walletPopup.classList.add('hidden');
 
+
+
         if (startConnectBtn) {
+
             startConnectBtn.classList.remove('hidden');
+
             startConnectBtn.disabled = false; // "Start Game" effectively means "Connect" here
+
         }
+
         if (startBtn) {
+
             startBtn.classList.add('hidden');
+
             startBtn.disabled = true;
+
         }
+
     }
+
 }
+
+
 
 function disconnectWallet() {
+
     currentAccount = null;
+
     updateUI(null);
+
     console.log("Disconnected (UI State Reset)");
+
 }
+
+
 
 function togglePopup() {
+
     if (currentAccount) {
+
         if (walletPopup) walletPopup.classList.toggle('hidden');
+
     } else {
+
         connectWallet();
+
     }
+
 }
+
+
 
 async function fetchBalance(account) {
+
     try {
+
         const rpcUrl = 'https://rpc.dogechain.dog';
+
         const provider = new ethers.providers.JsonRpcProvider(rpcUrl, {
+
             name: 'dogechain',
+
             chainId: 2000
+
         });
+
+
 
         const balance = await provider.getBalance(account);
+
         const formattedBalance = ethers.utils.formatEther(balance);
 
+
+
         if (popupBalance) popupBalance.innerText = `${parseFloat(formattedBalance).toFixed(2)} DOGE`;
+
     } catch (error) {
+
         console.error('Error fetching balance:', error);
+
         if (popupBalance) popupBalance.innerText = 'Error';
+
     }
+
 }
+
+
 
 function initWallet() {
+
     console.log("Initializing Wallet...");
+
     if (connectBtn) {
+
         connectBtn.addEventListener('click', (e) => {
+
             if (window.game && window.game.isRunning) {
+
                 window.game.togglePause();
+
             }
+
             togglePopup();
+
         });
+
     }
+
     if (startConnectBtn) {
+
         startConnectBtn.addEventListener('click', () => connectWallet());
+
     }
+
     if (disconnectBtn) {
+
         disconnectBtn.addEventListener('click', () => disconnectWallet());
+
     }
+
+
 
     // Close popup when clicking outside
+
     document.addEventListener('click', (e) => {
+
         if (walletPopup && !walletPopup.contains(e.target) && e.target !== connectBtn) {
+
             walletPopup.classList.add('hidden');
+
         }
+
     });
+
 }
+
+
 
 // Check if already connected on load
+
 async function checkConnection() {
+
     if (typeof window.ethereum !== 'undefined') {
+
         try {
+
             const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+
             if (accounts.length > 0) {
+
                 const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+
                 if (chainId === DOGECHAIN_ID) {
+
                     updateUI(accounts[0]);
+
                 }
+
             }
+
         } catch (err) {
+
             console.error("Connection Check Failed:", err);
+
         }
+
     }
+
 }
 
+
+
 window.addEventListener('DOMContentLoaded', () => {
+
     initWallet();
+
     checkConnection();
+
 });
+
+
 
 // --- Leaderboard Integration ---
 
 // Placeholder - User must update this after deployment!
-const LEADERBOARD_CONTRACT_ADDRESS = "0x10f2F8c009704FADBf989c6387a5ecA1B7c5914B";
+const LEADERBOARD_CONTRACT_ADDRESS = "0x70B4a8F2937835B381534706d7821Cb06E29e9A4";
 const GAME_COST_DOGE = "1.0"; // 1 DOGE
 
 const LEADERBOARD_ABI = [
     "function startGame() external payable",
-    "function submitScore(uint256 _score) external",
+    "function submitScore(uint256 _score, bytes _signature) external",
     "function getLeaderboard() external view returns (tuple(address player, uint256 score, uint256 timestamp)[])",
     "function getLowestQualifyingScore() external view returns (uint256)",
     "function getPotInfo() external view returns (uint256 pot, uint256 endTime)",
     "function hasTicket(address player) external view returns (bool)",
-    "function distributePrize() external"
+    "function distributePrize() external",
+    "function signerAddress() external view returns (address)",
+    "function setSignerAddress(address _signer) external",
+    "function gameRoundDuration() external view returns (uint256)"
 ];
 
 window.getLeaderboardContract = () => {
@@ -416,7 +678,33 @@ window.submitHighScore = async (score) => {
         const contract = window.getLeaderboardContract();
         if (!contract) throw new Error("Wallet not connected");
 
-        const tx = await contract.submitScore(score);
+        let signature = "0x";
+
+        // Request Signature from Backend
+        try {
+            console.log("Requesting server signature...");
+            const res = await fetch('/api/sign-score', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    player: currentAccount,
+                    score: score,
+                    contract: LEADERBOARD_CONTRACT_ADDRESS
+                })
+            });
+            const data = await res.json();
+
+            if (data.success && data.signature) {
+                signature = data.signature;
+                console.log("Signature obtained:", signature);
+            } else {
+                console.warn("Signature request failed:", data.error);
+            }
+        } catch (e) {
+            console.error("Signature fetch error:", e);
+        }
+
+        const tx = await contract.submitScore(score, signature);
         console.log("Transaction sent:", tx.hash);
         await tx.wait();
         console.log("Score submitted successfully!");
@@ -452,5 +740,93 @@ window.checkIsTopScore = async (score) => {
     } catch (e) {
         console.warn("Error checking top score:", e);
         return false;
+    }
+};
+
+/**
+ * Client-Side Indexer
+ * Fetches all 'ScoreSubmitted' events to build an infinite All-Time Leaderboard.
+ */
+window.fetchAllTimeLeaderboard = async () => {
+    try {
+        if (LEADERBOARD_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") return [];
+
+        const rpcUrl = 'https://rpc.dogechain.dog';
+        const provider = new ethers.providers.JsonRpcProvider(rpcUrl, { name: 'dogechain', chainId: 2000 });
+
+        // Event Signature: ScoreSubmitted(address,uint256)
+        const topic0 = ethers.utils.id("ScoreSubmitted(address,uint256)");
+
+        // Fix: Dogechain RPC limits range to 5000 blocks.
+        // Since you just deployed, we check the last 20,000 blocks in chunks.
+        const currentBlock = await provider.getBlockNumber();
+        const range = 4500; // Safe under 5000 limit
+        const lookback = 20000; // Look back ~10 hours (approx) -> Covers "All Time" for new contract
+        let fromBlock = Math.max(0, currentBlock - lookback);
+        const toBlock = currentBlock;
+
+        let allLogs = [];
+
+        // Chunk Loop
+        for (let i = fromBlock; i < toBlock; i += range) {
+            const end = Math.min(i + range, toBlock);
+            try {
+                const logs = await provider.getLogs({
+                    fromBlock: i,
+                    toBlock: end,
+                    address: LEADERBOARD_CONTRACT_ADDRESS,
+                    topics: [topic0]
+                });
+                allLogs = allLogs.concat(logs);
+            } catch (chunkErr) {
+                console.warn(`Error fetching logs ${i}-${end}:`, chunkErr);
+            }
+        }
+
+        console.log(`[AllTime] Logs found: ${allLogs.length}`);
+
+        const leaderboard = [];
+
+        allLogs.forEach(log => {
+            try {
+                // Decode Data
+                const player = ethers.utils.getAddress('0x' + log.topics[1].slice(26));
+                const score = ethers.BigNumber.from(log.data).toNumber();
+
+                leaderboard.push({ name: player, score: score });
+            } catch (e) {
+                console.warn("Error parsing log:", e);
+            }
+        });
+
+        leaderboard.sort((a, b) => b.score - a.score);
+
+        return leaderboard;
+    } catch (err) {
+        console.error("Error fetching all-time leaderboard:", err);
+        return [];
+    }
+};
+
+/**
+ * Fetches game configuration (Round Duration).
+ * @returns {Promise<{duration: number}|null>}
+ */
+window.fetchGameConfig = async () => {
+    try {
+        const contract = window.getPublicLeaderboardContract();
+        if (LEADERBOARD_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") return null;
+
+        // Try-catch for backward compatibility with old contracts
+        try {
+            const duration = await contract.gameRoundDuration();
+            return { duration: duration.toNumber() };
+        } catch (e) {
+            console.warn("Could not fetch game duration (old contract?) defaulting to 60s");
+            return { duration: 60 };
+        }
+    } catch (err) {
+        console.error("Error fetching game config:", err);
+        return { duration: 60 };
     }
 };

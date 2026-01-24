@@ -98,7 +98,15 @@
 
                 <!-- Leaderboard Screen -->
                 <section id="leaderboard-screen" class="overlay hidden">
-                    <h1 class="title" style="font-size: 2rem;">TOP 10</h1>
+                    <h1 class="title" style="font-size: 2rem;">LEADERBOARD</h1>
+
+                    <div id="leaderboard-tabs"
+                        style="display: flex; gap: 10px; margin-bottom: 10px; justify-content: center;">
+                        <button id="tab-hourly" class="btn-secondary small active-tab"
+                            style="background: #209cee; color: white;">TOURNAMENT</button>
+                        <button id="tab-alltime" class="btn-secondary small">ALL TIME</button>
+                    </div>
+
                     <div id="leaderboard-list">
                         <div class="leaderboard-header">
                             <span>#</span><span>NAME</span><span>SCORE</span>
@@ -133,7 +141,7 @@
                     </div>
 
                     <div id="game-over-menu" class="hidden">
-                        <button id="restart-btn" class="btn-primary">TRY AGAIN</button>
+                        <button id="restart-btn" class="btn-primary">PLAY AGAIN</button>
                         <button id="exit-btn" class="btn-secondary">EXIT</button>
                     </div>
                 </section>
