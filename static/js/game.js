@@ -18,12 +18,12 @@ class Game {
         window.game = this;
 
         // --- Configuration ---
-        // Fixed NES-like Resolution
-        this.canvas.width = 320;
-        this.canvas.height = 240;
-        this.width = 320;
-        this.height = 240;
-        this.hudHeight = 40; // Visual height of HUD in game coordinates
+        // Fixed VGA Resolution (Matches new 640x480 container)
+        this.canvas.width = 640;
+        this.canvas.height = 480;
+        this.width = 640;
+        this.height = 480;
+        this.hudHeight = 60; // Visual height of HUD in game coordinates
 
         // Disable smoothing for crisp pixel art look
         this.ctx.imageSmoothingEnabled = false;
@@ -69,8 +69,10 @@ class Game {
         this.collisionCtx = this.collisionCanvas.getContext('2d', { willReadFrequently: true });
 
 
-        this.resize();
-        window.addEventListener('resize', () => this.resize());
+        // Scaler.js handles the DOM transform.
+        // We just ensure the canvas is correct.
+        this.initDOM(); // Initialize DOM references
+        // window.addEventListener('resize', () => this.resize()); // Legacy resize removed
 
         // Screen Shake
         this.gameContainer = document.getElementById('game-container');
@@ -296,19 +298,7 @@ class Game {
         }
     }
 
-    resize() {
-        // Size canvas to its CSS dimensions (which are controlled by the 4:3 container)
-        // We want 1:1 pixel mapping for crisp look
-        this.canvas.width = this.canvas.clientWidth;
-        this.canvas.height = this.canvas.clientHeight;
-
-        this.width = this.canvas.width;
-        this.height = this.canvas.height;
-
-        if (this.slingshot) {
-            this.slingshot.updatePosition();
-        }
-
+    initDOM() {
         // DOM elements for Game Over
         this.submitScoreContainer = document.getElementById('submit-score-container');
         this.gameOverMenu = document.getElementById('game-over-menu');
