@@ -148,7 +148,11 @@ def sign_score():
         message = encode_defunct(hexstr=msg_hash.hex())
         signed_message = Account.sign_message(message, private_key)
 
-        return jsonify({"success": True, "signature": signed_message.signature.hex()})
+        sig = signed_message.signature.hex()
+        if not sig.startswith("0x"):
+            sig = "0x" + sig
+
+        return jsonify({"success": True, "signature": sig})
 
     except Exception as e:
         print(f"Sign Error: {e}")
