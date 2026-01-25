@@ -420,10 +420,10 @@ function initWallet() {
 
     if (startConnectBtn) {
         startConnectBtn.addEventListener('click', () => connectWallet());
-        startConnectBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
+        startConnectBtn.addEventListener('touchstart', () => {
+            // e.preventDefault(); // Removed: Blocks Rabby/Metamask popup on some mobile browsers
             connectWallet();
-        }, { passive: false });
+        }, { passive: true });
     }
 
     if (disconnectBtn) {
