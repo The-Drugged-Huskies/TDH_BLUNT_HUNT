@@ -38,6 +38,7 @@
 
     <button id="testBtn">TEST BACKEND SIGNER</button>
     <div id="log">Logs will appear here...</div>
+    <script src="js/config.js"></script>
 
     <script>
         const logDiv = document.getElementById('log');
@@ -53,7 +54,7 @@
                 const payload = {
                     player: "0x1234567890123456789012345678901234567890",
                     score: 123,
-                    contract: "0x2e50E3beEd076d6F72Bf79d05032FE4Af1A2729f" // Hardcoded current contract
+                    contract: GameConfig.LEADERBOARD_CONTRACT_ADDRESS
                 };
 
                 const res = await fetch('/api/sign-score', {

@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <title>Deploy Leaderboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <script src="js/config.js"></script>
     <style>
         body {
             font-family: monospace;
@@ -522,7 +523,7 @@ contract Leaderboard is Ownable {
 
         // --- WALLET LOGIC ---
         let provider, signer;
-        const DOGECHAIN_ID = 2000;
+        const DOGECHAIN_ID = parseInt(GameConfig.DOGECHAIN_ID, 16);
 
         document.getElementById('connectBtn').onclick = async () => {
             if (!window.ethereum) { log('No wallet found! Install MetaMask.', 'error'); return; }
@@ -536,20 +537,14 @@ contract Leaderboard is Ownable {
                     try {
                         await window.ethereum.request({
                             method: 'wallet_switchEthereumChain',
-                            params: [{ chainId: '0x7D0' }],
+                            params: [{ chainId: GameConfig.DOGECHAIN_ID }],
                         });
                         provider = new ethers.providers.Web3Provider(window.ethereum); // re-init
                     } catch (e) {
                         try {
                             await window.ethereum.request({
                                 method: 'wallet_addEthereumChain',
-                                params: [{
-                                    chainId: '0x7D0',
-                                    chainName: 'Dogechain Mainnet',
-                                    nativeCurrency: { name: 'DOGE', symbol: 'DOGE', decimals: 18 },
-                                    rpcUrls: ['https://rpc.dogechain.dog'],
-                                    blockExplorerUrls: ['https://explorer.dogechain.dog/']
-                                }]
+                                params: [GameConfig.DOGECHAIN_CONFIG]
                             });
                         } catch (addError) {
                             log('Failed to switch/add network.', 'error');

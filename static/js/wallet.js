@@ -5,29 +5,8 @@
 
 
 
-const DOGECHAIN_ID = '0x7D0'; // 2000 in hex
-
-const DOGECHAIN_CONFIG = {
-
-    chainId: DOGECHAIN_ID,
-
-    chainName: 'Dogechain Mainnet',
-
-    nativeCurrency: {
-
-        name: 'DOGE',
-
-        symbol: 'DOGE',
-
-        decimals: 18,
-
-    },
-
-    rpcUrls: ['https://rpc.dogechain.dog'],
-
-    blockExplorerUrls: ['https://explorer.dogechain.dog/'],
-
-};
+const DOGECHAIN_ID = GameConfig.DOGECHAIN_ID;
+const DOGECHAIN_CONFIG = GameConfig.DOGECHAIN_CONFIG;
 
 
 
@@ -509,6 +488,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
     checkConnection();
 
+    window.fetchDynamicGameCost();
+
 });
 
 
@@ -516,8 +497,10 @@ window.addEventListener('DOMContentLoaded', () => {
 // --- Leaderboard Integration ---
 
 // Placeholder - User must update this after deployment!
-const LEADERBOARD_CONTRACT_ADDRESS = "0x2e50E3beEd076d6F72Bf79d05032FE4Af1A2729f";
-const GAME_COST_DOGE = "1.0"; // 1 DOGE
+// Used from config.js
+const LEADERBOARD_CONTRACT_ADDRESS = GameConfig.LEADERBOARD_CONTRACT_ADDRESS;
+// Initial value from config, but will be updated dynamically
+let GAME_COST_DOGE = GameConfig.GAME_COST_DOGE;
 
 const LEADERBOARD_ABI = [
     "function startGame() external payable",
@@ -529,7 +512,8 @@ const LEADERBOARD_ABI = [
     "function distributePrize() external",
     "function signerAddress() external view returns (address)",
     "function setSignerAddress(address _signer) external",
-    "function gameRoundDuration() external view returns (uint256)"
+    "function gameRoundDuration() external view returns (uint256)",
+    "function gameCost() external view returns (uint256)"
 ];
 
 window.getLeaderboardContract = () => {
@@ -825,5 +809,35 @@ window.fetchGameConfig = async () => {
     } catch (err) {
         console.error("Error fetching game config:", err);
         return { duration: 60 };
+    }
+};
+
+window.fetchDynamicGameCost = async () => {
+    try {
+        const contract = window.getPublicLeaderboardContract();
+        if (LEADERBOARD_CONTRACT_ADDRESS === "0x0000000000000000000000000000000000000000") return;
+
+        const cost = await contract.gameCost();
+        const costEth = ethers.utils.formatEther(cost);
+
+        console.log(`Dynamic Game Cost Fetched: ${costEth} DOGE`);
+        GAME_COST_DOGE = costEth;
+
+        // Update Start Button Text if it exists
+        if (startConnectBtn) {
+            // Only update if it says "START GAME" (default) or matches old price?
+            // Actually, simpler to just append price?
+            // But the button handles "CONNECT" vs "START".
+            // Let's just log it for now as the button doesn't explicitly show price in text in HTML.
+            // If user wants price on button, I should add it. 
+            // HTML: <button ...>START GAME</button>
+            // Let's change it to `START GAME (${costEth} DOGE)`?
+            // The user didn't explicitly ask for UI change, just "fetch the cost".
+            // But "make game cost on config match" implies they want the logic to match.
+            // I'll stick to logic update first.
+        }
+
+    } catch (e) {
+        console.warn("Using default cost from config (Fetch failed):", e);
     }
 };

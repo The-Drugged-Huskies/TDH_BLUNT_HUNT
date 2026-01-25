@@ -150,10 +150,12 @@
     </div>
 
     <div id="status"></div>
+    <script src="js/config.js"></script>
 
     <script>
         // Default, but user can change input
-        let CONTRACT_ADDRESS = document.getElementById('contractAddrInput').value;
+        let CONTRACT_ADDRESS = GameConfig.LEADERBOARD_CONTRACT_ADDRESS;
+        document.getElementById('contractAddrInput').value = CONTRACT_ADDRESS;
 
         const ABI = [
             "function recoverFunds() external",
