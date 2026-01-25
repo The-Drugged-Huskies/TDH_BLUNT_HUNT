@@ -675,6 +675,22 @@ window.submitHighScore = async (score) => {
         const contract = window.getLeaderboardContract();
         if (!contract) throw new Error("Wallet not connected");
 
+        // 0. Pre-Check: Do we have a ticket?
+        // This prevents "UNPREDICTABLE_GAS_LIMIT" / Revert errors
+        try {
+            const hasTicket = await contract.hasTicket(currentAccount);
+            if (!hasTicket) {
+                console.warn("User does not have a ticket on-chain!");
+                return {
+                    success: false,
+                    reason: "NO_TICKET: Entry fee not paid or ticket already used."
+                };
+            }
+        } catch (checkErr) {
+            console.warn("Could not check ticket status:", checkErr);
+            // Continue anyway, maybe the view failed but tx works? (Unlikely)
+        }
+
         let signature = "0x";
 
         // Request Signature from Backend
@@ -696,11 +712,18 @@ window.submitHighScore = async (score) => {
                 console.log("Signature obtained:", signature);
             } else {
                 console.warn("Signature request failed:", data.error);
+                // If the contract enforces signature (signerAddress != 0), this will fail.
+                // We'll check that:
+                const signerAddr = await contract.signerAddress();
+                if (signerAddr !== "0x0000000000000000000000000000000000000000") {
+                    return { success: false, reason: "SIGNATURE_FAILED: Server could not sign score." };
+                }
             }
         } catch (e) {
             console.error("Signature fetch error:", e);
         }
 
+        // 2. Submit
         const tx = await contract.submitScore(score, signature);
         console.log("Transaction sent:", tx.hash);
         await tx.wait();
@@ -708,6 +731,10 @@ window.submitHighScore = async (score) => {
         return { success: true, hash: tx.hash };
     } catch (err) {
         console.error("Error submitting score:", err);
+        // Handle Gas Estimation Error nicely
+        if (err.code === 'UNPREDICTABLE_GAS_LIMIT' || err.message.includes('execution reverted')) {
+            return { success: false, reason: "Transaction Reverted. Likely 'No Ticket' or 'Invalid Signature'." };
+        }
         return { success: false, reason: err.message };
     }
 };

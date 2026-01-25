@@ -130,13 +130,6 @@
                 <section id="leaderboard-screen" class="overlay hidden">
                     <h1 class="title" style="font-size: 2rem;">LEADERBOARD</h1>
 
-                    <div id="leaderboard-tabs"
-                        style="display: flex; gap: 10px; margin-bottom: 10px; justify-content: center;">
-                        <button id="tab-hourly" class="btn-secondary small active-tab"
-                            style="background: #209cee; color: white;">TOURNAMENT</button>
-                        <button id="tab-alltime" class="btn-secondary small">ALL TIME</button>
-                    </div>
-
                     <div id="leaderboard-list">
                         <div class="leaderboard-header">
                             <span>#</span><span>NAME</span><span>SCORE</span>
@@ -145,14 +138,17 @@
                     </div>
 
                     <div id="leaderboard-controls"
-                        style="display: flex; justify-content: center; align-items: center; gap: 20px; margin-bottom: 20px;">
+                        style="display: flex; justify-content: center; align-items: center; gap: 20px; margin-bottom: 10px;">
                         <button id="prev-page-btn" class="nav-arrow" aria-label="Previous Page">&lt;</button>
                         <button id="close-leaderboard-btn" class="btn-secondary" style="margin-top: 0;">CLOSE</button>
                         <button id="next-page-btn" class="nav-arrow" aria-label="Next Page">&gt;</button>
                     </div>
 
-                    <div id="leaderboard-hud">
-                        <!-- Reserved -->
+                    <div id="leaderboard-hud"
+                        style="display: flex; gap: 10px; justify-content: center; margin-bottom: 10px;">
+                        <button id="tab-hourly" class="btn-secondary small active-tab"
+                            style="background: #209cee; color: white;">TOURNAMENT</button>
+                        <button id="tab-alltime" class="btn-secondary small">ALL TIME</button>
                     </div>
                 </section>
 

@@ -578,6 +578,22 @@ canvas {
     opacity: 1;
 }
 
+/* Leaderboard List - Expanded */
+#leaderboard-list {
+    flex: 1;
+    overflow-y: auto;
+    width: 90%;
+    margin-bottom: 10px;
+    border: 4px solid #fff;
+    padding: 10px;
+    background: #000;
+}
+
+#leaderboard-controls button {
+    font-size: 0.6rem;
+    padding: 8px 12px;
+}
+
 .slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
