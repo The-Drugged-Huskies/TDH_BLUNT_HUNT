@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Audio.js System Test</title>
+    <style>
+        body {
+            background-color: #202020;
+            color: #ecf0f1;
+            font-family: monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+
+        button {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 1.5rem;
+            margin: 20px;
+            cursor: pointer;
+            border-radius: 10px;
+        }
+
+        #log {
+            margin-top: 20px;
+            border: 1px solid #7f8c8d;
+            padding: 10px;
+            width: 80%;
+            height: 200px;
+            overflow-y: scroll;
+            background: #34495e;
+            text-align: left;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>AUDIO.JS SYSTEM TEST</h1>
+    <p>Tap/Click below to initialize AudioContext</p>
+
+    <button id="test-btn">START TEST SEQUENCE</button>
+    <button id="music-btn" style="background:#27ae60;">TOGGLE MUSIC</button>
+
+    <div id="log">Logs will appear here...</div>
+
+    <!-- Include actual audio.js (Check path) -->
+    <script src="js/audio.js"></script>
+
+    <script>
+        // Logger helper
+        function log(msg) {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.innerText = `> ${msg}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(msg);
+        }
+
+        function popup(msg) {
+            alert(msg);
+            log("POPUP: " + msg);
+        }
+
+        // Global instance
+        let audioSys = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            log("DOM Loaded.");
+
+            try {
+                if (typeof AudioManager === 'undefined') {
+                    popup("CRITICAL ERROR: AudioManager class not found! Is js/audio.js loading?");
+                    return;
+                }
+
+                // 1. Instantiate
+                log("Attempting to create AudioManager instance...");
+                audioSys = new AudioManager();
+                log("AudioManager instantiated successfully.");
+                log("Context State: " + audioSys.ctx.state);
+
+                popup("AudioManager Created.\nContext State: " + audioSys.ctx.state + "\n\nClick 'START TEST SEQUENCE' to resume context and play sounds.");
+
+            } catch (e) {
+                popup("EXCEPTION during Init: " + e.message);
+                log("Exception: " + e.stack);
+            }
+
+            // Button Handlers
+            const testBtn = document.getElementById('test-btn');
+            testBtn.addEventListener('click', async () => {
+                await runTestSequence();
+            });
+
+            const musicBtn = document.getElementById('music-btn');
+            musicBtn.addEventListener('click', () => {
+                toggleMusic();
+            });
+        });
+
+        async function runTestSequence() {
+            if (!audioSys) return popup("No Audio System!");
+
+            try {
+                popup("Step 1: Resuming Audio Context...");
+
+                // 2. Resume Context
+                if (audioSys.ctx.state === 'suspended') {
+                    await audioSys.ctx.resume();
+                }
+
+                log("Context State Now: " + audioSys.ctx.state);
+                popup("Context State: " + audioSys.ctx.state + "\n\nStep 2: Testing SFX (Hit/Coin)...");
+
+                // 3. Play Tones
+                log("Playing 'Hit'...");
+                audioSys.hit();
+
+                setTimeout(() => {
+                    log("Playing 'Clink'...");
+                    audioSys.clink();
+                }, 500);
+
+                setTimeout(() => {
+                    log("Playing 'GoldHit' (Two tones)...");
+                    audioSys.goldHit();
+                    popup("Did you hear 3 sounds? (Hit, Clink, High-Pitched Coin)");
+                }, 1000);
+
+            } catch (e) {
+                popup("TEST FAILED: " + e.message);
+            }
+        }
+
+        let musicPlaying = false;
+        function toggleMusic() {
+            if (!audioSys) return;
+
+            try {
+                if (!musicPlaying) {
+                    popup("Starting Procedural Music...");
+                    audioSys.startMusic();
+                    musicPlaying = true;
+                    log("Music Started.");
+                } else {
+                    audioSys.stopMusic();
+                    musicPlaying = false;
+                    log("Music Stopped.");
+                    popup("Music Stopped.");
+                }
+            } catch (e) {
+                popup("Music Error: " + e.message);
+            }
+        }
+
+    </script>
+</body>
+
+</html>

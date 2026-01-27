@@ -31,7 +31,7 @@ class Game {
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
             (navigator.userAgent.includes("Mac") && "ontouchend" in document);
 
-        if (isIOS) {
+        if (true) { // Always run detection check
             const startScreen = document.getElementById('start-screen');
             const subtitle = startScreen ? startScreen.querySelector('.subtitle') : null;
 
@@ -41,8 +41,15 @@ class Game {
                 if (!existingMsg) {
                     const iosMsg = document.createElement('p');
                     iosMsg.id = 'ios-detection-msg';
-                    iosMsg.innerText = "APPLE DEVICE DETECTED";
-                    iosMsg.style.color = '#83d313'; // Greenish
+
+                    if (isIOS) {
+                        iosMsg.innerText = "APPLE DEVICE DETECTED";
+                        iosMsg.style.color = '#83d313'; // Greenish
+                    } else {
+                        iosMsg.innerText = "NON-APPLE DEVICE DETECTED";
+                        iosMsg.style.color = '#209cee'; // Blueish
+                    }
+
                     iosMsg.style.fontSize = '0.6rem';
                     iosMsg.style.marginTop = '10px';
                     iosMsg.style.marginBottom = '10px';
