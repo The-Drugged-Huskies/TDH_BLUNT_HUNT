@@ -313,10 +313,10 @@ class Game {
         if (fsBtn) {
             fsBtn.addEventListener('click', () => {
                 if (window.scaler) {
-                    const isStretched = window.scaler.toggleStretch();
-                    console.log("Stretch Mode:", isStretched);
-                    // visual feedback?
-                    fsBtn.style.color = isStretched ? '#00ff00' : '#fff';
+                    const isLandscape = window.scaler.toggleLandscape();
+
+                    // Visual feedback: only color change
+                    fsBtn.style.color = isLandscape ? '#00ff00' : '#fff';
                 }
             });
         }

@@ -11,7 +11,8 @@ class Scaler {
 
         // Debounce resize
         this.resizeTimeout = null;
-        this.isStretch = false;
+        this.isStretch = false; // Deprecated
+        this.isLandscape = false;
 
         if (this.target) {
             this.init();
@@ -40,45 +41,57 @@ class Scaler {
         if (!this.target) return;
 
         // Current Window Dimensions
-        // We use innerWidth/Height to account for mobile bars dynamically
         const winW = window.innerWidth;
         const winH = window.innerHeight;
 
-        // Calculate Scale ratios
-        const scaleX = winW / this.baseWidth;
-        const scaleY = winH / this.baseHeight;
+        // Use dimensions based on orientation mode
+        // If Landscape mode is forced, we swap the "available" window space logic
+        // strictly for the purpose of calculating the fit.
+        // But visually we are just rotating the container.
+
+        let availableW = winW;
+        let availableH = winH;
+
+        if (this.isLandscape) {
+            // If we rotate 90deg, the "width" of the space is the window's height
+            availableW = winH;
+            availableH = winW;
+        }
+
+        // Calculate Scale ratios against the Base Game Resolution
+        const scaleX = availableW / this.baseWidth;
+        const scaleY = availableH / this.baseHeight;
 
         // "Contain" logic: fit completely visible
-        // If stretch mode is on, we scale X and Y independently
-        let finalScaleX = scaleX;
-        let finalScaleY = scaleY;
-
-        if (!this.isStretch) {
-            const scale = Math.min(scaleX, scaleY);
-            finalScaleX = scale;
-            finalScaleY = scale;
-        }
+        // We ALWAYS preserve aspect ratio
+        const scale = Math.min(scaleX, scaleY);
+        let finalScaleX = scale;
+        let finalScaleY = scale;
 
         // Apply
         // We set the transform
-        this.target.style.transform = `scale(${finalScaleX}, ${finalScaleY})`;
+        let transform = `scale(${finalScaleX}, ${finalScaleY})`;
+        if (this.isLandscape) {
+            transform += ' rotate(90deg)';
+        }
 
-        // Centering is handled by CSS (flex parent), 
-        // but we assume parent is Flex Center.
+        this.target.style.transform = transform;
 
-        // Expose scale for InputSystem (Uniform scale assumption for mouse logic might break with stretch?)
-        // InputSystem needs both scales if we stretch.
+        // Update Global Scale Globals
         window.GAME_SCALE_X = finalScaleX;
         window.GAME_SCALE_Y = finalScaleY;
-        window.GAME_SCALE = finalScaleX; // Legacy fallback
+        window.GAME_SCALE = finalScaleX;
 
-        console.log(`[Scaler] Applied Scale: ${finalScaleX.toFixed(3)}x${finalScaleY.toFixed(3)} (Window: ${winW}x${winH})`);
+        // Expose Landscape state for Inputs
+        window.IS_LANDSCAPE = this.isLandscape;
+
+        console.log(`[Scaler] Applied Scale: ${finalScaleX.toFixed(3)} (Landscape: ${this.isLandscape})`);
     }
 
-    toggleStretch() {
-        this.isStretch = !this.isStretch;
+    toggleLandscape() {
+        this.isLandscape = !this.isLandscape;
         this.applyScale();
-        return this.isStretch;
+        return this.isLandscape;
     }
 }
 

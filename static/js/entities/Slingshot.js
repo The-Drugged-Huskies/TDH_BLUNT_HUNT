@@ -37,14 +37,43 @@ class Slingshot {
         }
     }
 
-    onMouseDown(x, y) {
-        // Scale input coordinates to canvas 320x180
+    getGameCoordinates(clientX, clientY) {
         const rect = this.game.canvas.getBoundingClientRect();
-        const scaleX = this.game.width / rect.width;
-        const scaleY = this.game.height / rect.height;
 
-        const gameX = (x - rect.left) * scaleX;
-        const gameY = (y - rect.top) * scaleY;
+        if (window.IS_LANDSCAPE) {
+            // Normalized Visual Coords (0 to 1)
+            const nx = (clientX - rect.left) / rect.width;
+            const ny = (clientY - rect.top) / rect.height;
+
+            // Map to Game Coords (90deg CW Rotation Logic)
+            // Visual Top-Left (0,0) -> Game Bottom-Left (0, H)
+            // Visual Top-Right (1,0) -> Game Top-Left (0, 0)
+            // Visual Bottom-Right (1,1) -> Game Top-Right (W, 0)
+            // Visual Bottom-Left (0,1) -> Game Bottom-Right (W, H)
+
+            // X: Driven by visual Y (ny)
+            // Y: Driven by visual X (inverted nx)
+
+            const gameX = ny * this.game.width;
+            const gameY = (1 - nx) * this.game.height;
+
+            return { x: gameX, y: gameY };
+
+        } else {
+            // Standard
+            const scaleX = this.game.width / rect.width;
+            const scaleY = this.game.height / rect.height;
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+    }
+
+    onMouseDown(x, y) {
+        const coords = this.getGameCoordinates(x, y);
+        const gameX = coords.x;
+        const gameY = coords.y;
 
         const dist = Math.hypot(gameX - this.x, gameY - this.y);
         // Interaction radius increased for easier grabbing (covers the husky position)
@@ -57,12 +86,9 @@ class Slingshot {
 
     onMouseMove(x, y) {
         if (this.isDragging) {
-            const rect = this.game.canvas.getBoundingClientRect();
-            const scaleX = this.game.width / rect.width;
-            const scaleY = this.game.height / rect.height;
-
-            const gameX = (x - rect.left) * scaleX;
-            const gameY = (y - rect.top) * scaleY;
+            const coords = this.getGameCoordinates(x, y);
+            const gameX = coords.x;
+            const gameY = coords.y;
 
             const dx = gameX - this.x;
             const dy = gameY - this.y;
