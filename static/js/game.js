@@ -416,10 +416,7 @@ class Game {
         this.husky = null;
         this.husky = null;
 
-        // Auto-Fullscreen on Mobile
-        if (!document.fullscreenElement && /Mobi|Android/i.test(navigator.userAgent)) {
-            document.documentElement.requestFullscreen().catch(() => { });
-        }
+        // Auto-Fullscreen removed (using Force Landscape instead)
 
         this.isRunning = true;
         this.hits = 0; // Total hits (visual dots)
@@ -443,8 +440,12 @@ class Game {
 
         this.startTime = performance.now();
 
-        // Start Music
-        this.audio.startMusic();
+        // Start Music (Safe Mode)
+        try {
+            this.audio.startMusic();
+        } catch (e) {
+            console.warn("Audio start failed:", e);
+        }
 
         requestAnimationFrame(this.loop);
     }
