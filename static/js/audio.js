@@ -798,19 +798,39 @@ class AudioManager {
         osc.connect(gain);
 
         // Send to Delay (Dub Effect)
-        if (this.delayNode) {
-            const sendGain = this.ctx.createGain();
-            sendGain.gain.value = 0.8;
-            gain.connect(sendGain);
-            sendGain.connect(this.delayNode);
-        }
-
-        // And Main Out
-        gain.connect(this.sfxBus);
+        osc.connect(this.delayNode);
 
         osc.start(now);
-        lfo.start(now);
         osc.stop(now + 2.0);
+        lfo.start(now);
         lfo.stop(now + 2.0);
+    }
+
+    async playIntroTune() {
+        try {
+            if (this.ctx.state === 'suspended') {
+                await this.ctx.resume();
+            }
+
+            console.log("Playing Intro Test Tune...");
+            const now = this.ctx.currentTime;
+
+            // Major Arpeggio Jingle (C - E - G - C)
+            const notes = [523.25, 659.25, 783.99, 1046.50];
+
+            notes.forEach((freq, i) => {
+                const t = now + (i * 0.1);
+                this.playTone(freq, 'square', 0.1, 0.2);
+            });
+
+            // Final Coin/Ding
+            setTimeout(() => {
+                this.playTone(1318.51, 'sine', 0.4, 0.2); // High E
+            }, 400);
+
+        } catch (e) {
+            console.error(e);
+            alert("Audio Error: " + e.message);
+        }
     }
 }
