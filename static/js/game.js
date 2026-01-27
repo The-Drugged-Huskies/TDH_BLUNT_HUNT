@@ -36,14 +36,19 @@ class Game {
             const subtitle = startScreen ? startScreen.querySelector('.subtitle') : null;
 
             if (subtitle) {
-                const iosMsg = document.createElement('p');
-                iosMsg.innerText = "APPLE DEVICE DETECTED";
-                iosMsg.style.color = '#83d313'; // Greenish
-                iosMsg.style.fontSize = '0.6rem';
-                iosMsg.style.marginTop = '10px';
-                iosMsg.style.marginBottom = '10px';
+                // Check if message already exists to verify it works
+                let existingMsg = document.getElementById('ios-detection-msg');
+                if (!existingMsg) {
+                    const iosMsg = document.createElement('p');
+                    iosMsg.id = 'ios-detection-msg';
+                    iosMsg.innerText = "APPLE DEVICE DETECTED";
+                    iosMsg.style.color = '#83d313'; // Greenish
+                    iosMsg.style.fontSize = '0.6rem';
+                    iosMsg.style.marginTop = '10px';
+                    iosMsg.style.marginBottom = '10px';
 
-                subtitle.parentNode.insertBefore(iosMsg, subtitle.nextSibling);
+                    subtitle.parentNode.insertBefore(iosMsg, subtitle.nextSibling);
+                }
             }
         }
 

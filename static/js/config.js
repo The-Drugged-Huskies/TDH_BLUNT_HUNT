@@ -10,7 +10,7 @@ const GameConfig = {
     GAME_COST_DOGE: "1.0",
 
     // Game Version
-    GAME_VERSION: "0.76",
+    GAME_VERSION: "0.77",
 
     // Chain Information
     DOGECHAIN_ID: '0x7D0', // 2000
