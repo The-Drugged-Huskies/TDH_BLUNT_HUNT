@@ -35,10 +35,7 @@ def deploy():
     return send_from_directory('static', 'deploy.html')
 
 
-@app.route('/test')
-def test_page():
-    """Serves the signer debug tool."""
-    return send_from_directory('static', 'signer_debug.html')
+
 
 
 @app.route('/api/sign-score', methods=['POST'])

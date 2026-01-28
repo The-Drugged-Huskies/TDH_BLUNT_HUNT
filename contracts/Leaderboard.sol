@@ -1,18 +1,156 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+/**
+ * @dev Provides information about the current execution context, including the
+ * sender of the transaction and its data. While these are generally available
+ * via msg.sender and msg.data, they should not be accessed in such a direct
+ * manner, since when dealing with meta-transactions the account sending and
+ * paying for execution may not be the actual sender (as far as an application
+ * is concerned).
+ */
+abstract contract Context {
+    function _msgSender() internal view virtual returns (address) {
+        return msg.sender;
+    }
+
+    function _msgData() internal view virtual returns (bytes calldata) {
+        return msg.data;
+    }
+}
+
+/**
+ * @dev Contract module which provides a basic access control mechanism, where
+ * there is an account (an owner) that can be granted exclusive access to
+ * specific functions.
+ */
+abstract contract Ownable is Context {
+    address private _owner;
+
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    constructor() {
+        _transferOwnership(_msgSender());
+    }
+
+    modifier onlyOwner() {
+        _checkOwner();
+        _;
+    }
+
+    function owner() public view virtual returns (address) {
+        return _owner;
+    }
+
+    function _checkOwner() internal view virtual {
+        require(owner() == _msgSender(), "Ownable: caller is not the owner");
+    }
+
+    function renounceOwnership() public virtual onlyOwner {
+        _transferOwnership(address(0));
+    }
+
+    function transferOwnership(address newOwner) public virtual onlyOwner {
+        require(newOwner != address(0), "Ownable: new owner is the zero address");
+        _transferOwnership(newOwner);
+    }
+
+    function _transferOwnership(address newOwner) internal virtual {
+        address oldOwner = _owner;
+        _owner = newOwner;
+        emit OwnershipTransferred(oldOwner, newOwner);
+    }
+}
+
+/**
+ * @dev Elliptic Curve Digital Signature Algorithm (ECDSA) operations.
+ */
+library ECDSA {
+    enum RecoverError {
+        NoError,
+        InvalidSignature,
+        InvalidSignatureLength,
+        InvalidSignatureS
+    }
+
+    error ECDSAInvalidSignature();
+    error ECDSAInvalidSignatureLength(uint256 length);
+    error ECDSAInvalidSignatureS(bytes32 s);
+
+    function tryRecover(bytes32 hash, bytes memory signature) internal pure returns (address recovered, RecoverError err, bytes32 errArg) {
+        if (signature.length == 65) {
+            bytes32 r;
+            bytes32 s;
+            uint8 v;
+            assembly ("memory-safe") {
+                r := mload(add(signature, 0x20))
+                s := mload(add(signature, 0x40))
+                v := byte(0, mload(add(signature, 0x60)))
+            }
+            return tryRecover(hash, v, r, s);
+        } else {
+            return (address(0), RecoverError.InvalidSignatureLength, bytes32(signature.length));
+        }
+    }
+
+    function recover(bytes32 hash, bytes memory signature) internal pure returns (address) {
+        (address recovered, RecoverError error, bytes32 errorArg) = tryRecover(hash, signature);
+        _throwError(error, errorArg);
+        return recovered;
+    }
+
+    function tryRecover(bytes32 hash, bytes32 r, bytes32 vs) internal pure returns (address recovered, RecoverError err, bytes32 errArg) {
+        unchecked {
+            bytes32 s = vs & bytes32(0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
+            uint8 v = uint8((uint256(vs) >> 255) + 27);
+            return tryRecover(hash, v, r, s);
+        }
+    }
+
+    function recover(bytes32 hash, bytes32 r, bytes32 vs) internal pure returns (address) {
+        (address recovered, RecoverError error, bytes32 errorArg) = tryRecover(hash, r, vs);
+        _throwError(error, errorArg);
+        return recovered;
+    }
+
+    function tryRecover(bytes32 hash, uint8 v, bytes32 r, bytes32 s) internal pure returns (address recovered, RecoverError err, bytes32 errArg) {
+        if (uint256(s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) {
+            return (address(0), RecoverError.InvalidSignatureS, s);
+        }
+        address signer = ecrecover(hash, v, r, s);
+        if (signer == address(0)) {
+            return (address(0), RecoverError.InvalidSignature, bytes32(0));
+        }
+        return (signer, RecoverError.NoError, bytes32(0));
+    }
+
+    function recover(bytes32 hash, uint8 v, bytes32 r, bytes32 s) internal pure returns (address) {
+        (address recovered, RecoverError error, bytes32 errorArg) = tryRecover(hash, v, r, s);
+        _throwError(error, errorArg);
+        return recovered;
+    }
+
+    function _throwError(RecoverError error, bytes32 errorArg) private pure {
+        if (error == RecoverError.NoError) {
+            return;
+        } else if (error == RecoverError.InvalidSignature) {
+            revert ECDSAInvalidSignature();
+        } else if (error == RecoverError.InvalidSignatureLength) {
+            revert ECDSAInvalidSignatureLength(uint256(errorArg));
+        } else if (error == RecoverError.InvalidSignatureS) {
+            revert ECDSAInvalidSignatureS(errorArg);
+        }
+    }
+
+    // Helper for strings
+    function toEthSignedMessageHash(bytes32 hash) internal pure returns (bytes32 message) {
+        return keccak256(abi.encodePacked("\\x19Ethereum Signed Message:\\n32", hash));
+    }
+}
 
 /**
  * @title Leaderboard
  * @dev Stores the top 100 high scores. 
- *      Implements Pay-to-Play mechanics:
- *      - 1 DOGE entry fee.
- *      - 25% goes to owner (dev fee).
- *      - 75% goes to the Prize Pool.
- *      - Every hour, the Prize Pool is paid to the leaderboard winner.
- *      - Leaderboard resets after payout.
  */
 contract Leaderboard is Ownable {
     using ECDSA for bytes32;
@@ -24,13 +162,18 @@ contract Leaderboard is Ownable {
     }
 
     Score[] public leaderboard;
+    Score[] public allTimeLeaderboard;
+
     uint256 constant MAX_LEADERBOARD_SIZE = 100;
+    uint256 constant MAX_ALL_TIME_SIZE = 100;
 
     // Game Config
     uint256 public gameCost = 1 ether; // 1 DOGE
     uint256 public gameInterval = 1 hours; // Default duration
+    uint256 public alignmentOffset = 0; // Seconds offset from Interval start (e.g. 16:20 relative to day)
     uint256 public prizePool;
     uint256 public gameEndTime;
+    uint256 public gameRoundDuration = 60; // Seconds per game session
     
     // Security
     address public signerAddress;
@@ -47,33 +190,49 @@ contract Leaderboard is Ownable {
     event PaymentFailed(address indexed recipient, uint256 amount);
 
     constructor() {
-        gameEndTime = block.timestamp + gameInterval;
+        gameEndTime = calculateNextEndTime();
     }
 
-    /**
-     * @dev Player pays 1 DOGE to start a game.
-     *      Checks if the previous game ended (and pays out winner if so).
-     *      Splits fee: 25% owner, 75% pot.
-     */
+    function calculateNextEndTime() public view returns (uint256) {
+        if (gameInterval == 0) return block.timestamp + 1 hours;
+        
+        // Robust Alignment Logic
+        // Ensures the next deadline is always at (N * interval) + offset
+        // e.g. If interval=1 day, offset=16:20, it will always end at 16:20.
+        
+        uint256 current = block.timestamp;
+        
+        // Standardize current time to interval grid
+        // We subtract offset to shift the grid, divide to find "interval index", add 1 for next, then restore.
+        // We use int cast to handle potential underflow if we were pre-1970, but uint is fine for current times > offset.
+        
+        // Safety: If offset > current (unlikely unless huge offset), just add interval.
+        // In practice offset is usually 0..interval.
+        
+        uint256 next = ((current - alignmentOffset) / gameInterval + 1) * gameInterval + alignmentOffset;
+        
+        // If calculated time is in the past (edge case), add another interval
+        if (next <= current) {
+             next += gameInterval;
+        }
+        
+        return next;
+    }
+
     function startGame() external payable {
         require(msg.value >= gameCost, "Insufficient payment");
 
-        // 1. Check for hourly payout trigger BEFORE processing new pot addition
         distributePrize();
 
-        // 2. Split Payment
         uint256 devFee = (msg.value * 25) / 100;
         uint256 potShare = msg.value - devFee;
 
-        // Transfer dev fee (Safe Call)
         (bool success, ) = payable(owner()).call{value: devFee}("");
         require(success, "Dev fee transfer failed");
 
-        // Add to Pot
         prizePool += potShare;
         emit PotUpdated(prizePool);
 
-        // 3. Grant Ticket (Overwrites previous unused ticket)
         hasTicket[msg.sender] = true;
         
         emit GameStarted(msg.sender, block.timestamp);
@@ -84,99 +243,100 @@ contract Leaderboard is Ownable {
      *      Requires a server-side signature if signerAddress is set.
      */
     function submitScore(uint256 _score, bytes memory _signature) external {
-        require(hasTicket[msg.sender] == true || msg.sender == owner(), "No ticket. Pay to play.");
+        require(hasTicket[msg.sender] == true, "No ticket. Pay to play.");
         
         // Security Check
         if (signerAddress != address(0)) {
-            // Recreate the message hash that the server signed
-            // Logic: keccak256(player address + score + this contract address)
             bytes32 hash = keccak256(abi.encodePacked(msg.sender, _score, address(this)));
             
             // Verify signature
-            // ECDSA.recover(hash.toEthSignedMessageHash(), signature) == signer
             address recovered = hash.toEthSignedMessageHash().recover(_signature);
             require(recovered == signerAddress, "Invalid signature");
         }
 
-        // Consume Ticket
         hasTicket[msg.sender] = false;
-
-        // EMIT EVENT FOR ALL-TIME INDEXER
         emit ScoreSubmitted(msg.sender, _score);
 
-        // Check availability (Timer might have expired during gameplay)
         distributePrize();
 
-        // Standard Leaderboard Logic
-        uint256 length = leaderboard.length;
-        if (length < MAX_LEADERBOARD_SIZE) {
-            _insertScore(_score);
+        // 1. Update Tournament Leaderboard (Resets)
+        _updateLeaderboard(leaderboard, _score, MAX_LEADERBOARD_SIZE);
+
+        // 2. Update All-Time Leaderboard (Persistent)
+        _updateLeaderboard(allTimeLeaderboard, _score, MAX_ALL_TIME_SIZE);
+    }
+    
+    // Generic Helper
+    function _updateLeaderboard(Score[] storage _list, uint256 _score, uint256 _maxSize) internal {
+        uint256 length = _list.length;
+        if (length < _maxSize) {
+            _insertScore(_list, _score);
             return;
         }
 
-        // Check if it beats the lowest
-        if (_score > leaderboard[length - 1].score) {
-            leaderboard.pop();
-            _insertScore(_score);
+        if (_score > _list[length - 1].score) {
+            _list.pop();
+            _insertScore(_list, _score);
         }
     }
-    
+
+    function setGameRoundDuration(uint256 _duration) external onlyOwner {
+        gameRoundDuration = _duration;
+    }
+
     function setSignerAddress(address _signer) external onlyOwner {
         signerAddress = _signer;
     }
 
-    /**
-     * @dev Public: Triggered externally (by bot/frontend) OR internally (by game actions).
-     */
     function distributePrize() public {
         if (block.timestamp >= gameEndTime) {
             uint256 amount = prizePool;
             
-            // Check availability - Must have players to pay out
             if (leaderboard.length > 0) {
                 address winner = leaderboard[0].player;
                 
-                // --- EFFECTS (Reset State First) ---
                 prizePool = 0;
-                delete leaderboard; 
-                gameEndTime = block.timestamp + gameInterval;
+                delete leaderboard; // Clears TOURNAMENT board
+                
+                // Align to next strict schedule
+                gameEndTime = calculateNextEndTime(); 
 
-                // --- INTERACTIONS (External Call Last) ---
                 if (amount > 0) {
                     (bool sent, ) = payable(winner).call{value: amount}("");
                     require(sent, "Prize transfer failed. Try again.");
                     emit PrizePaid(winner, amount, block.timestamp);
                 }
             } else {
-                // No players? Just restart the timer, keep the pot.
-                gameEndTime = block.timestamp + gameInterval;
+                gameEndTime = calculateNextEndTime();
             }
         }
     }
 
-    function _insertScore(uint256 _score) internal {
-        uint256 length = leaderboard.length;
-        leaderboard.push(Score({
+    function _insertScore(Score[] storage _list, uint256 _score) internal {
+        uint256 length = _list.length;
+        _list.push(Score({
             player: msg.sender,
             score: _score,
             timestamp: block.timestamp
         }));
 
         for (uint256 i = length; i > 0; i--) {
-            if (leaderboard[i].score > leaderboard[i - 1].score) {
-                Score memory temp = leaderboard[i];
-                leaderboard[i] = leaderboard[i - 1];
-                leaderboard[i - 1] = temp;
+            if (_list[i].score > _list[i - 1].score) {
+                Score memory temp = _list[i];
+                _list[i] = _list[i - 1];
+                _list[i - 1] = temp;
             } else {
                 break;
             }
         }
     }
 
-    // --- Views ---
-
     function getLeaderboard() external view returns (Score[] memory) {
         return leaderboard;
+    }
+
+    function getAllTimeLeaderboard() external view returns (Score[] memory) {
+        return allTimeLeaderboard;
     }
 
     function getLowestQualifyingScore() external view returns (uint256) {
@@ -190,10 +350,12 @@ contract Leaderboard is Ownable {
         return (prizePool, gameEndTime);
     }
 
-    // --- Admin ---
-
     function setGameInterval(uint256 _interval) external onlyOwner {
         gameInterval = _interval;
+    }
+    
+    function setHelperAlignment(uint256 _offset) external onlyOwner {
+        alignmentOffset = _offset;
     }
 
     function setGameCost(uint256 _newCost) external onlyOwner {
@@ -204,13 +366,12 @@ contract Leaderboard is Ownable {
         gameEndTime = _timestamp;
     }
 
-    // Emergency: Force payout/reset if stuck
     function forceEndedState() external onlyOwner {
-        gameEndTime = block.timestamp; // Expire immediately
+        gameEndTime = block.timestamp; 
     }
 
     function recoverFunds() external onlyOwner {
-        prizePool = 0; // Reset internal counter to match empty wallet
+        prizePool = 0; 
         (bool success, ) = payable(owner()).call{value: address(this).balance}("");
         require(success, "Transfer failed");
     }
