@@ -91,6 +91,12 @@
             <button id="setCostBtn" disabled>SET PRICE (DOGE)</button>
         </div>
 
+        <div style="margin-bottom: 20px;">
+            <h4>DEV FEE % (Current: <span id="curDevFee" style="color:#0f0">-</span>%)</h4>
+            <input type="number" id="devFeeInput" placeholder="25" min="0" max="100" style="padding: 5px;">
+            <button id="setDevFeeBtn" disabled>SET FEE (%)</button>
+        </div>
+
         <div>
             <h4>TOURNAMENT DURATION (Current: <span id="curDuration" style="color:#0f0">-</span>)</h4>
             <button class="intervalBtn" data-val="3600">1 HOUR</button>
@@ -172,7 +178,9 @@
             "function signerAddress() view returns (address)",
             "function gameRoundDuration() view returns (uint256)",
             "function setGameRoundDuration(uint256 _duration) external",
-            "function getPotInfo() view returns (uint256 pot, uint256 endTime)"
+            "function getPotInfo() view returns (uint256 pot, uint256 endTime)",
+            "function devFeePercent() view returns (uint256)",
+            "function setDevFeePercent(uint256 _percent) external"
         ];
 
         let provider, signer, contract;
@@ -203,6 +211,14 @@
                 // Cost
                 const cost = await contract.gameCost();
                 document.getElementById('curCost').innerText = ethers.utils.formatEther(cost);
+
+                // Dev Fee
+                try {
+                    const fee = await contract.devFeePercent();
+                    document.getElementById('curDevFee').innerText = fee.toString();
+                } catch (e) {
+                    document.getElementById('curDevFee').innerText = "25 (Fixed)";
+                }
 
                 // Interval
                 const interval = await contract.gameInterval();
@@ -302,6 +318,21 @@
                 const tx = await contract.setGameCost(wei);
                 await tx.wait();
                 log("Cost Updated!", "success");
+            } catch (e) { log("Error: " + e.message, "error"); }
+        });
+
+        // 1b. Set Dev Fee
+        document.getElementById('setDevFeeBtn').addEventListener('click', async () => {
+            if (!contract) return;
+            try {
+                const val = document.getElementById('devFeeInput').value;
+                if (!val) return alert("Enter percent (0-100)");
+
+                log("Setting Dev Fee to " + val + "%...", "success");
+                const tx = await contract.setDevFeePercent(val);
+                await tx.wait();
+                log("Dev Fee Updated!", "success");
+                updateSettings();
             } catch (e) { log("Error: " + e.message, "error"); }
         });
 

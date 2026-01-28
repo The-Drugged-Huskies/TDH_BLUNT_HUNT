@@ -234,8 +234,8 @@ contract Leaderboard is Ownable {
 
     struct Score {
         address player;
-        uint256 score;
-        uint256 timestamp;
+        uint48 score;
+        uint48 timestamp;
     }
 
     /**
@@ -261,7 +261,8 @@ contract Leaderboard is Ownable {
     uint256 public prizePool;
     uint256 public gameEndTime;
     uint256 public gameRoundDuration = 60; // Seconds per game session
-    
+    uint256 public devFeePercent = 25; // Default 25%
+
     // Security
     address public signerAddress;
 
@@ -311,7 +312,7 @@ contract Leaderboard is Ownable {
 
         distributePrize();
 
-        uint256 devFee = (msg.value * 25) / 100;
+        uint256 devFee = (msg.value * devFeePercent) / 100;
         uint256 potShare = msg.value - devFee;
 
         (bool success, ) = payable(owner()).call{value: devFee}("");
@@ -355,15 +356,19 @@ contract Leaderboard is Ownable {
     
     // Generic Helper
     function _updateLeaderboard(Score[] storage _list, uint256 _score, uint256 _maxSize) internal {
+        // Safe Cast
+        require(_score <= type(uint48).max, "Score overflow");
+        uint48 score48 = uint48(_score);
+
         uint256 length = _list.length;
         if (length < _maxSize) {
-            _insertScore(_list, _score);
+            _insertScore(_list, score48);
             return;
         }
 
-        if (_score > _list[length - 1].score) {
+        if (score48 > _list[length - 1].score) {
             _list.pop();
-            _insertScore(_list, _score);
+            _insertScore(_list, score48);
         }
     }
 
@@ -373,6 +378,11 @@ contract Leaderboard is Ownable {
 
     function setSignerAddress(address _signer) external onlyOwner {
         signerAddress = _signer;
+    }
+
+    function setDevFeePercent(uint256 _percent) external onlyOwner {
+        require(_percent <= 100, "Fee cannot exceed 100%");
+        devFeePercent = _percent;
     }
 
     /**
@@ -396,9 +406,16 @@ contract Leaderboard is Ownable {
                 gameEndTime = calculateNextEndTime(); 
 
                 if (amount > 0) {
+                    // SECURE: Use call but handle failure gracefully (Rollover)
                     (bool sent, ) = payable(winner).call{value: amount}("");
-                    require(sent, "Prize transfer failed. Try again.");
-                    emit PrizePaid(winner, amount, block.timestamp);
+                    
+                    if (sent) {
+                        emit PrizePaid(winner, amount, block.timestamp);
+                    } else {
+                        // Anti-DoS: If payment fails, keep funds in pot for next round
+                        prizePool += amount; 
+                        emit PaymentFailed(winner, amount);
+                    }
                 }
             } else {
                 gameEndTime = calculateNextEndTime();
@@ -406,12 +423,12 @@ contract Leaderboard is Ownable {
         }
     }
 
-    function _insertScore(Score[] storage _list, uint256 _score) internal {
+    function _insertScore(Score[] storage _list, uint48 _score) internal {
         uint256 length = _list.length;
         _list.push(Score({
             player: msg.sender,
             score: _score,
-            timestamp: block.timestamp
+            timestamp: uint48(block.timestamp)
         }));
 
         for (uint256 i = length; i > 0; i--) {
