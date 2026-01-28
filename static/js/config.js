@@ -7,7 +7,7 @@ const GameConfig = {
     LEADERBOARD_CONTRACT_ADDRESS: "0xd9a16c4B00BDFeC1e0E2691266E31Dd2794d9F09",
 
     // Game Version
-    GAME_VERSION: "0.78",
+    GAME_VERSION: "0.79",
 
     // Chain Information
     DOGECHAIN_ID: '0x7D0', // 2000
