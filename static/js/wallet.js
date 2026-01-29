@@ -178,6 +178,13 @@ window.checkAndTriggerPayout = async () => {
         const status = await ls.checkPayoutStatus();
         if (!status) return;
 
+        // FIX: Only show popup if we are on the Menu (Start Screen)
+        // This prevents it from popping up during the game or on the Game Over screen.
+        const startScreen = document.getElementById('start-screen');
+        if (!startScreen || startScreen.classList.contains('hidden')) {
+            return;
+        }
+
         if (status.needsPayout) {
             let msg = "Round ended! Distribute the prizes and restart?";
             if (parseFloat(status.pot) === 0) {

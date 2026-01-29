@@ -595,6 +595,11 @@ class Game {
         this.round = 1;
         this.hits = 0;
         this.updateHitMarkers();
+
+        // Check for payout now that we are back in the menu
+        if (window.checkAndTriggerPayout) {
+            window.checkAndTriggerPayout();
+        }
     }
 
 
