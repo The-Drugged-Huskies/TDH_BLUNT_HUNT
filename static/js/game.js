@@ -28,38 +28,6 @@ class Game {
         // Initialize Game System (Pixel Art Mode)
         // Initialize Blunt Hunt
 
-        // --- iOS Detection Message ---
-        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-            (navigator.userAgent.includes("Mac") && "ontouchend" in document);
-
-        if (true) { // Always run detection check
-            const startScreen = document.getElementById('start-screen');
-            const subtitle = startScreen ? startScreen.querySelector('.subtitle') : null;
-
-            if (subtitle) {
-                // Check if message already exists to verify it works
-                let existingMsg = document.getElementById('ios-detection-msg');
-                if (!existingMsg) {
-                    const iosMsg = document.createElement('p');
-                    iosMsg.id = 'ios-detection-msg';
-
-                    if (isIOS) {
-                        iosMsg.innerText = "APPLE DEVICE DETECTED";
-                        iosMsg.style.color = '#83d313'; // Greenish
-                    } else {
-                        iosMsg.innerText = "NON-APPLE DEVICE DETECTED";
-                        iosMsg.style.color = '#209cee'; // Blueish
-                    }
-
-                    iosMsg.style.fontSize = '0.6rem';
-                    iosMsg.style.marginTop = '10px';
-                    iosMsg.style.marginBottom = '10px';
-
-                    subtitle.parentNode.insertBefore(iosMsg, subtitle.nextSibling);
-                }
-            }
-        }
-
         // Fixed VGA Resolution (Matches new 640x480 container)
         this.canvas.width = 640;
         this.canvas.height = 480;
