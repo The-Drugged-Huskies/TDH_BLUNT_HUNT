@@ -240,6 +240,15 @@ window.showCustomModal = (message, isConfirmation = false, title = "NOTICE") => 
             return;
         }
 
+        // --- Gameplay Suppression ---
+        // If the game is running, we block non-essential modals to prevent 
+        // interruptions during play (e.g. from background payout checks).
+        if (window.game && window.game.isRunning) {
+            console.warn(`[UI] Modal suppressed during gameplay: "${message}"`);
+            resolve(false);
+            return;
+        }
+
         titleEl.innerText = title;
         msgEl.innerText = message;
 
