@@ -186,9 +186,9 @@ window.checkAndTriggerPayout = async () => {
         }
 
         if (status.needsPayout) {
-            let msg = "Round ended! Distribute the prizes and restart?";
+            let msg = "Tournament ended! Distribute the prizes and restart?";
             if (parseFloat(status.pot) === 0) {
-                msg = "Round ended! No winners! Restart round?";
+                msg = "Tournament ended! No winners! Restart round?";
             }
 
             // Logic from original: Ask user to distribute
@@ -198,7 +198,7 @@ window.checkAndTriggerPayout = async () => {
             );
             if (confirm) {
                 await ls.distributePrize();
-                await window.showCustomModal("Prize Distributed! Round Reset.");
+                await window.showCustomModal("Prize Distributed! Tournament Reset.");
             }
         }
 

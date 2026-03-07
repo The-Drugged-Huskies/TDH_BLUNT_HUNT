@@ -273,7 +273,7 @@ class Game {
         // Initial call
         this.updatePotDisplay();
         // Poll every 10s
-        setInterval(() => this.updatePotDisplay(), 10000);
+        setInterval(() => this.updatePotDisplay(), 1000); // Update every second for smooth transition
     }
 
     async updatePotDisplay() {
@@ -304,7 +304,11 @@ class Game {
                         timeStr = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
                     }
 
-                    potTimer.innerText = `TOURNAMENT ENDS: ${timeStr}`;
+                    if (timeLeft <= 0) {
+                        potTimer.innerText = "TOURNAMENT ENDED!";
+                    } else {
+                        potTimer.innerText = `TOURNAMENT ENDS: ${timeStr}`;
+                    }
                     potTimer.classList.remove('hidden');
                 }
             }
