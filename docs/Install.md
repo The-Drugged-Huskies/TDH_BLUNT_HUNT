@@ -27,9 +27,10 @@ You need a secondary wallet to sign scores. **Do not use your main wallet.**
 
     ```env
     SIGNER_PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HERE
+    NETWORK_ID=dogechain
     ```
 
-    *(Make sure it starts with 0x if it's a hex string.)*
+    *(Note: `SIGNER_PRIVATE_KEY` must be the private key of the account used in Step 6.)*
 
 ## 4. Deploy the Contract
 
@@ -39,9 +40,7 @@ You need a secondary wallet to sign scores. **Do not use your main wallet.**
 4. Click **DEPLOY**.
 5. **Copy the New Contract Address**.
 
-## 5. Update Game Config
-
-1. Open `static/js/wallet.js`.
+1. Open `static/js/config.js`.
     * Find `LEADERBOARD_CONTRACT_ADDRESS`.
     * Paste your **NEW** address.
 2. Open `static/admin.html`.
