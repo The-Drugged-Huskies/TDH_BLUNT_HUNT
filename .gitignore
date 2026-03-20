@@ -61,3 +61,4 @@ static/data/leaderboard.json
 
 # Dev Tools (Local Only)
 static/deploy.html
+audit_docs/

@@ -361,6 +361,13 @@ class Game {
     async start() {
         if (this.isRunning) return;
 
+        // --- Tournament Payout Check ---
+        // If the tournament has ended, prompt admin to distribute prizes before starting
+        if (window.checkAndTriggerPayout) {
+            const status = await window.checkAndTriggerPayout();
+            if (status === false) return; // User cancelled or popup was suppressed
+        }
+
         // --- Payout Check Override ---
         // If the pot timer has expired, force a payout check instead of starting.
         if (window.payEntryFee) {
@@ -592,11 +599,6 @@ class Game {
         this.round = 1;
         this.hits = 0;
         this.updateHitMarkers();
-
-        // Check for payout now that we are back in the menu
-        if (window.checkAndTriggerPayout) {
-            window.checkAndTriggerPayout();
-        }
     }
 
 

@@ -24,8 +24,8 @@ function initWalletUI() {
     // Wallet Init
 
     // Subscribe to Wallet Manager
-    wm.onAccountChange((account) => {
-        updateUI(account);
+    wm.onAccountChange(async (account) => {
+        await updateUI(account);
     });
 
     // Button Listeners
@@ -53,9 +53,6 @@ function initWalletUI() {
     // Auto-Connect (Logic moved to WalletManager, but we trigger init here)
     wm.init();
 
-    // Periodic Pot Check
-    checkAndTriggerPayout();
-    setInterval(checkAndTriggerPayout, 60000); // Check every minute
 }
 
 // --- UI Logic ---
@@ -80,8 +77,7 @@ async function updateUI(account) {
         }
 
         updateBalance(account);
-        checkAndTriggerPayout();
-
+        await checkAndTriggerPayout();
     } else {
         // Disconnected
         if (connectBtn) {
@@ -172,17 +168,21 @@ window.checkIsTopScore = async (score) => {
 // --- Payout Logic ---
 
 window.checkAndTriggerPayout = async () => {
-    if (!wm.currentAccount) return;
+    if (!wm.currentAccount) return true; // No wallet, allow game to start
 
     try {
         const status = await ls.checkPayoutStatus();
-        if (!status) return;
+        if (!status) {
+            // Always enable start button when checks pass
+            if (startBtn) startBtn.disabled = false;
+            return true; // No status available, allow game to start
+        }
 
         // FIX: Only show popup if we are on the Menu (Start Screen)
         // This prevents it from popping up during the game or on the Game Over screen.
         const startScreen = document.getElementById('start-screen');
         if (!startScreen || startScreen.classList.contains('hidden')) {
-            return;
+            return true; // Not on menu screen, allow game to continue
         }
 
         if (status.needsPayout) {
@@ -200,14 +200,20 @@ window.checkAndTriggerPayout = async () => {
                 await ls.distributePrize();
                 await window.showCustomModal("Prize Distributed! Tournament Reset.");
             }
+            // Always re-enable start button after payout dialog closes
+            if (startBtn) startBtn.disabled = false;
+            return confirm; // Return user's choice (true if confirmed, false if cancelled)
         }
 
-        // Always enable start button if we are connected and things are checked
+        // Always enable start button when we reach here (no payout needed)
         if (startBtn) startBtn.disabled = false;
+        return true; // No payout needed, allow game to start
 
     } catch (e) {
         console.error("Payout trigger error:", e);
-        if (startBtn) startBtn.disabled = false; // Fallback
+        // Always re-enable start button on error
+        if (startBtn) startBtn.disabled = false;
+        return true; // On error, allow game to start
     }
 }
 

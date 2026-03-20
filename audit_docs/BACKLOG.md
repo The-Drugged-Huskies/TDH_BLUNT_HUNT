@@ -41,7 +41,7 @@ Derived from Technical Audit (Updated Mar 2026).
 ## 🚀 Post-Deployment
 
 - [x] **Update `static/js/config.js` with New Address**:
-  - Address: `0xDeCfB1e43F4B981Cb5F1EeafFC2E11847B8Ad8A1`
+  - Address: `0x68B71266553A8A37F645798bc46B7F3D5285B517`
 - [ ] **Verify New Contract on Explorer**:
   - **Action**: Upload `contracts/Leaderboard.sol` to Dogechain Explorer.
   - *Note: The file is already flattened and ready for "Single File" verification.*
