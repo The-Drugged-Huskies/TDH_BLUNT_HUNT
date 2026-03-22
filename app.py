@@ -19,6 +19,7 @@ from flask_limiter.util import get_remote_address
 load_dotenv()
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', os.urandom(32).hex())
 
 # Rate Limiting
 limiter = Limiter(
