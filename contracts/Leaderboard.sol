@@ -47,7 +47,7 @@ abstract contract Ownable is Context {
     }
 
     function renounceOwnership() public virtual onlyOwner {
-        _transferOwnership(address(0));
+        revert("Ownership renunciation is disabled");
     }
 
     function transferOwnership(address newOwner) public virtual onlyOwner {
@@ -144,7 +144,7 @@ library ECDSA {
 
     // Helper for strings
     function toEthSignedMessageHash(bytes32 hash) internal pure returns (bytes32 message) {
-        return keccak256(abi.encodePacked("\\x19Ethereum Signed Message:\\n32", hash));
+        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
     }
 }
 
@@ -192,6 +192,9 @@ contract Leaderboard is Ownable {
     // Ticket: True if user has paid for a game but not yet submitted
     mapping(address => bool) public hasTicket;
 
+    // Nonce per player for replay protection
+    mapping(address => uint256) public nonces;
+
     event NewHighScore(address indexed player, uint256 score, uint256 rank);
     event PrizePaid(address indexed winner, uint256 amount, uint256 timestamp);
     event GameStarted(address indexed player, uint256 timestamp);
@@ -231,7 +234,7 @@ contract Leaderboard is Ownable {
     }
 
     function startGame() external payable {
-        require(msg.value >= gameCost, "Insufficient payment");
+        require(msg.value == gameCost, "Payment must be exact game cost");
 
         distributePrize();
 
@@ -259,11 +262,14 @@ contract Leaderboard is Ownable {
         // Security Check: Fail-Closed
         require(signerAddress != address(0), "Security: Signer not initialized");
         
-        bytes32 hash = keccak256(abi.encodePacked(msg.sender, _score, address(this)));
+        bytes32 hash = keccak256(abi.encodePacked(msg.sender, _score, address(this), nonces[msg.sender]));
         
         // Verify signature
         address recovered = hash.toEthSignedMessageHash().recover(_signature);
         require(recovered == signerAddress, "Invalid signature");
+
+        // Increment nonce to prevent replay
+        nonces[msg.sender]++;
 
         hasTicket[msg.sender] = false;
         emit ScoreSubmitted(msg.sender, _score);
@@ -271,7 +277,12 @@ contract Leaderboard is Ownable {
         distributePrize();
 
         // 1. Update Tournament Leaderboard (Resets)
-        _updateLeaderboard(leaderboard, _score, MAX_LEADERBOARD_SIZE);
+        uint256 tournamentRank = _updateLeaderboard(leaderboard, _score, MAX_LEADERBOARD_SIZE);
+
+        // Emit event if player achieved #1 on tournament board
+        if (tournamentRank == 0) {
+            emit NewHighScore(msg.sender, _score, 1);
+        }
 
         // 2. Update All-Time Leaderboard (Persistent)
         _updateLeaderboard(allTimeLeaderboard, _score, MAX_ALL_TIME_SIZE);
@@ -286,7 +297,7 @@ contract Leaderboard is Ownable {
     }
 
     function setDevFeePercent(uint256 _percent) external onlyOwner {
-        require(_percent <= 100, "Fee cannot exceed 100%");
+        require(_percent <= 50, "Fee cannot exceed 50%");
         devFeePercent = _percent;
     }
 
@@ -332,7 +343,7 @@ contract Leaderboard is Ownable {
      * @dev Optimized leaderboard update logic.
      *      Uses a single-pass shift instead of multiple swaps to save ~50% gas on SSTOREs.
      */
-    function _updateLeaderboard(Score[] storage _list, uint256 _score, uint256 _maxSize) internal {
+    function _updateLeaderboard(Score[] storage _list, uint256 _score, uint256 _maxSize) internal returns (uint256) {
         // Safe Cast
         require(_score <= type(uint48).max, "Score overflow");
         uint48 score48 = uint48(_score);
@@ -341,7 +352,7 @@ contract Leaderboard is Ownable {
         
         // 1. Determine if score qualifies
         if (length == _maxSize && score48 <= _list[length - 1].score) {
-            return; // Doesn't make the cut
+            return type(uint256).max; // Doesn't make the cut
         }
 
         // 2. Find insertion point
@@ -370,6 +381,8 @@ contract Leaderboard is Ownable {
             score: score48,
             timestamp: uint48(block.timestamp)
         });
+
+        return insertionIndex;
     }
 
     function getLeaderboard() external view returns (Score[] memory) {
@@ -378,6 +391,35 @@ contract Leaderboard is Ownable {
 
     function getAllTimeLeaderboard() external view returns (Score[] memory) {
         return allTimeLeaderboard;
+    }
+
+    /**
+     * @notice Paginated leaderboard getter to reduce gas on large reads.
+     * @param _offset Starting index (0-based)
+     * @param _limit Maximum number of entries to return
+     */
+    function getLeaderboardPaginated(uint256 _offset, uint256 _limit) external view returns (Score[] memory) {
+        return _paginate(leaderboard, _offset, _limit);
+    }
+
+    function getAllTimeLeaderboardPaginated(uint256 _offset, uint256 _limit) external view returns (Score[] memory) {
+        return _paginate(allTimeLeaderboard, _offset, _limit);
+    }
+
+    function _paginate(Score[] storage _list, uint256 _offset, uint256 _limit) internal view returns (Score[] memory) {
+        if (_offset >= _list.length) {
+            return new Score[](0);
+        }
+        uint256 end = _offset + _limit;
+        if (end > _list.length) {
+            end = _list.length;
+        }
+        uint256 size = end - _offset;
+        Score[] memory result = new Score[](size);
+        for (uint256 i = 0; i < size; i++) {
+            result[i] = _list[_offset + i];
+        }
+        return result;
     }
 
     function getLowestQualifyingScore() external view returns (uint256) {
@@ -392,10 +434,12 @@ contract Leaderboard is Ownable {
     }
 
     function setGameInterval(uint256 _interval) external onlyOwner {
+        require(_interval > 0, "Interval must be positive");
         gameInterval = _interval;
     }
     
     function setHelperAlignment(uint256 _offset) external onlyOwner {
+        require(_offset < gameInterval, "Offset must be less than interval");
         alignmentOffset = _offset;
     }
 

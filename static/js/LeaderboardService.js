@@ -21,7 +21,10 @@ class LeaderboardService {
             "function setSignerAddress(address _signer) external",
             "function gameRoundDuration() external view returns (uint256)",
             "function gameCost() external view returns (uint256)",
-            "function getAllTimeLeaderboard() external view returns (tuple(address player, uint256 score, uint256 timestamp)[])"
+            "function getAllTimeLeaderboard() external view returns (tuple(address player, uint256 score, uint256 timestamp)[])",
+            "function nonces(address) external view returns (uint256)",
+            "function getLeaderboardPaginated(uint256 _offset, uint256 _limit) external view returns (tuple(address player, uint256 score, uint256 timestamp)[])",
+            "function getAllTimeLeaderboardPaginated(uint256 _offset, uint256 _limit) external view returns (tuple(address player, uint256 score, uint256 timestamp)[])"
         ];
     }
 
@@ -78,6 +81,9 @@ class LeaderboardService {
                 body: JSON.stringify({ player: account })
             });
             const data = await res.json();
+            if (data.success && data.session_token) {
+                this._sessionToken = data.session_token;
+            }
             return data;
         } catch (e) {
             console.error("Session Start Error:", e);
@@ -117,7 +123,8 @@ class LeaderboardService {
             const hasTicket = await contract.hasTicket(account);
             if (!hasTicket) return { success: false, reason: "NO_TICKET" };
 
-            const isCheater = window.game ? window.game.isCheater : false;
+            // Read on-chain nonce for replay protection
+            const nonce = (await contract.nonces(account)).toString();
 
             const sigRes = await fetch('/api/sign-score', {
                 method: 'POST',
@@ -126,9 +133,12 @@ class LeaderboardService {
                     player: account,
                     score,
                     contract: this.contractAddress,
-                    cheater: isCheater
+                    session_token: this._sessionToken || null,
+                    nonce
                 })
             });
+            // Clear token after use (one-time)
+            this._sessionToken = null;
             const sigData = await sigRes.json();
 
             if (!sigData.success) {

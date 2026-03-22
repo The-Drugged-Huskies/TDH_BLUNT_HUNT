@@ -7,6 +7,7 @@ This module serves the game frontend and handles leaderboard score submissions.
 import json
 import os
 import time
+import jwt
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from web3 import Web3
 from eth_account import Account
@@ -27,12 +28,11 @@ limiter = Limiter(
     storage_uri="memory://",
 )
 
-# In-memory session storage: { player_address: { start_time: timestamp } }
-# In production, use Redis or a database.
-game_sessions = {}
-SESSION_EXPIRY = 300 # 5 minutes
-MAX_SCORE_PER_SEC = 2000 # Plausibility threshold
-MIN_GAME_TIME = 5 # Minimum seconds to prevent instant subs
+# JWT Session Config
+JWT_SECRET = os.getenv('JWT_SECRET', os.urandom(32).hex())
+SESSION_EXPIRY = 300  # 5 minutes
+MAX_SCORE_PER_SEC = 2000  # Plausibility threshold
+MIN_GAME_TIME = 5  # Minimum seconds to prevent instant subs
 
 
 @app.route('/')
@@ -53,24 +53,40 @@ def deploy():
     return send_from_directory('static', 'deploy.html')
 
 
+@app.route('/api/contract-source')
+def contract_source():
+    """Serves the Solidity contract source for the deploy tool."""
+    return send_from_directory('contracts', 'Leaderboard.sol', mimetype='text/plain')
+
+
 
 
 @app.route('/api/session/start', methods=['POST'])
 @limiter.limit("5 per minute")
 def start_session():
-    """Starts a game session for a player."""
+    """Starts a game session for a player. Returns a signed JWT token."""
     try:
         data = request.get_json(silent=True)
         if not data or 'player' not in data:
             return jsonify({"success": False, "error": "Missing player address"}), 400
         
         player = Web3.to_checksum_address(data['player'])
-        game_sessions[player] = {
-            "start_time": time.time()
-        }
-        return jsonify({"success": True})
+        
+        # Create a signed JWT containing the session data
+        token = jwt.encode(
+            {
+                "player": player,
+                "start_time": time.time(),
+                "exp": time.time() + SESSION_EXPIRY
+            },
+            JWT_SECRET,
+            algorithm="HS256"
+        )
+        
+        return jsonify({"success": True, "session_token": token})
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 400
+        app.logger.exception("Session start error: %s", e)
+        return jsonify({"success": False, "error": "Invalid request"}), 400
 
 
 @app.route('/api/sign-score', methods=['POST'])
@@ -108,10 +124,6 @@ def sign_score():
              return jsonify({"success": False, "error": "Invalid score"}), 400
              
         contract_addr = data.get('contract')
-        is_cheater = data.get('cheater', False)
-
-        if is_cheater:
-             return jsonify({"success": False, "error": "Score tampering detected. Request denied."}), 403
 
         if not player or not contract_addr:
              return jsonify({"success": False, "error": "Missing data"}), 400
@@ -123,41 +135,50 @@ def sign_score():
         except ValueError:
             return jsonify({"success": False, "error": "Invalid address format"}), 400
 
-        # --- VERIFICATION LOGIC ---
-        now = time.time()
-        session = game_sessions.get(player)
+        # --- VERIFICATION LOGIC (JWT) ---
+        session_token = data.get('session_token')
+        if not session_token:
+            return jsonify({"success": False, "error": "No session token. Start a game first."}), 403
         
-        if not session:
-            return jsonify({"success": False, "error": "No active session found for this player. Start a game first."}), 403
-            
-        start_time = session['start_time']
-        elapsed = now - start_time
-        
-        # 1. Session Expiry
-        if elapsed > SESSION_EXPIRY:
-            game_sessions.pop(player, None)
+        try:
+            session = jwt.decode(session_token, JWT_SECRET, algorithms=["HS256"])
+        except jwt.ExpiredSignatureError:
             return jsonify({"success": False, "error": "Session expired. Submit faster!"}), 403
+        except jwt.InvalidTokenError:
+            return jsonify({"success": False, "error": "Invalid session token."}), 403
+        
+        # Verify the token belongs to this player
+        if session.get('player') != player:
+            return jsonify({"success": False, "error": "Session player mismatch."}), 403
+        
+        start_time = session['start_time']
+        now = time.time()
+        elapsed = now - start_time
             
-        # 2. Minimum Time (Anti-Instant)
+        # 1. Minimum Time (Anti-Instant)
         if elapsed < MIN_GAME_TIME:
             return jsonify({"success": False, "error": "Game too short. Suspicious behavior."}), 403
             
-        # 3. Plausibility Check (Points per Second)
+        # 2. Plausibility Check (Points per Second)
         # Score must be achievable within the elapsed time
         # We add a 2 second buffer for latency
         if score > (elapsed + 2) * MAX_SCORE_PER_SEC:
              return jsonify({"success": False, "error": f"Score too high for time elapsed ({int(elapsed)}s). Anti-cheat triggered."}), 403
 
-        # Clear session after successful signing attempt (valid or not)
-        # This forces a new session for every game
-        game_sessions.pop(player, None)
-
         # --- SIGNING LOGIC ---
 
-        # Keccak256(player, score, contract) - MUST MATCH SOLIDITY
+        # Nonce provided by the frontend (read from on-chain)
+        # The contract verifies the nonce in the hash, so a fake nonce
+        # would cause signature verification to fail on-chain.
+        try:
+            nonce = int(data.get('nonce', 0))
+        except (ValueError, TypeError):
+            nonce = 0
+
+        # Keccak256(player, score, contract, nonce) - MUST MATCH SOLIDITY
         msg_hash = Web3.solidity_keccak(
-            ['address', 'uint256', 'address'],
-            [player, score, contract_addr]
+            ['address', 'uint256', 'address', 'uint256'],
+            [player, score, contract_addr, nonce]
         )
         
         # Sign
@@ -171,7 +192,8 @@ def sign_score():
         return jsonify({"success": True, "signature": sig})
 
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        app.logger.exception("Score signing error: %s", e)
+        return jsonify({"success": False, "error": "Internal server error"}), 500
 
 
 if __name__ == '__main__':

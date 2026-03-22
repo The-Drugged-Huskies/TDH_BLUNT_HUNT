@@ -60,6 +60,7 @@ static/data/leaderboard.json
 .idea/
 
 # Dev Tools (Local Only)
+static/admin.html
 static/deploy.html
 static/audio_test.html
 audit_docs/
