@@ -15,11 +15,16 @@ from eth_account.messages import encode_defunct
 from dotenv import load_dotenv
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_cors import CORS
 
 load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', os.urandom(32).hex())
+
+# CORS Configuration
+ALLOWED_ORIGINS = os.getenv('ALLOWED_ORIGINS', 'http://localhost:5000,http://127.0.0.1:5000').split(',')
+CORS(app, resources={r"/api/*": {"origins": [o.strip() for o in ALLOWED_ORIGINS if o.strip()]}})
 
 # Rate Limiting
 limiter = Limiter(

@@ -4,3 +4,4 @@ eth-account
 python-dotenv
 Flask-Limiter
 PyJWT
+Flask-Cors
