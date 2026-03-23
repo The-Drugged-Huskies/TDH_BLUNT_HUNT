@@ -171,6 +171,7 @@ class Game {
         this.closeSettingsBtn = document.getElementById('close-settings-btn');
         this.musicSlider = document.getElementById('music-volume');
         this.sfxSlider = document.getElementById('sfx-volume');
+        this.keySelect = document.getElementById('key-select');
 
         if (this.settingsBtn) {
             this.settingsBtn.addEventListener('click', () => {
@@ -271,46 +272,53 @@ class Game {
 
     async initPotPolling() {
         // Initial call
-        this.updatePotDisplay();
-        // Poll every 10s
-        setInterval(() => this.updatePotDisplay(), 1000); // Update every second for smooth transition
+        await this.fetchPotInfoData();
+        // Poll every 30s to save RPC calls
+        setInterval(() => this.fetchPotInfoData(), 30000);
+        // Render timer every second for smooth transition
+        setInterval(() => this.renderPotDisplay(), 1000);
     }
 
-    async updatePotDisplay() {
+    async fetchPotInfoData() {
         if (window.fetchPotInfo) {
-            const info = await window.fetchPotInfo();
-            if (info) {
-                const potDisplay = document.getElementById('pot-display');
-                const potTimer = document.getElementById('pot-timer');
+            this.lastPotInfo = await window.fetchPotInfo();
+            this.renderPotDisplay();
+        }
+    }
 
-                if (potDisplay) {
-                    potDisplay.innerText = `POT: ${info.pot}`;
-                    potDisplay.classList.remove('hidden');
+    renderPotDisplay() {
+        const info = this.lastPotInfo;
+        if (info) {
+            const potDisplay = document.getElementById('pot-display');
+            const potTimer = document.getElementById('pot-timer');
+
+            if (potDisplay) {
+                potDisplay.innerText = `POT: ${info.pot}`;
+                potDisplay.classList.remove('hidden');
+            }
+            if (potTimer) {
+                const timeLeft = Math.max(0, info.endTime - Date.now());
+
+                const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const mins = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                const secs = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+                let timeStr = "";
+                if (days > 0) {
+                    timeStr = `${days}d ${hours}h ${mins}m`;
+                } else if (hours > 0) {
+                    timeStr = `${hours}:${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                } else {
+                    timeStr = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
                 }
-                if (potTimer) {
-                    const timeLeft = Math.max(0, info.endTime - Date.now());
 
-                    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
-                    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                    const mins = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-                    const secs = Math.floor((timeLeft % (1000 * 60)) / 1000);
-
-                    let timeStr = "";
-                    if (days > 0) {
-                        timeStr = `${days}d ${hours}h ${mins}m`;
-                    } else if (hours > 0) {
-                        timeStr = `${hours}:${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
-                    } else {
-                        timeStr = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-                    }
-
-                    if (timeLeft <= 0) {
-                        potTimer.innerText = "TOURNAMENT ENDED!";
-                    } else {
-                        potTimer.innerText = `TOURNAMENT ENDS: ${timeStr}`;
-                    }
-                    potTimer.classList.remove('hidden');
+                if (timeLeft <= 0) {
+                    potTimer.innerText = "TOURNAMENT ENDED!";
+                } else {
+                    potTimer.innerText = `TOURNAMENT ENDS: ${timeStr}`;
                 }
+                potTimer.classList.remove('hidden');
             }
         }
     }
@@ -595,7 +603,7 @@ class Game {
         if (this.restartBtn) this.restartBtn.disabled = false;
 
         // Reset State (optional but good for clean start)
-        this.score = 0;
+        this._s = 0 ^ this._k; // Safe internal reset
         this.round = 1;
         this.hits = 0;
         this.updateHitMarkers();
@@ -1019,7 +1027,20 @@ class Game {
 
             const row = document.createElement('div');
             row.className = 'leaderboard-row';
-            row.innerHTML = `<span>${entry.rank}</span><span>${displayName}</span><span>${entry.score}</span>`;
+            
+            const spanRank = document.createElement('span');
+            spanRank.textContent = entry.rank;
+            
+            const spanName = document.createElement('span');
+            spanName.textContent = displayName;
+            
+            const spanScore = document.createElement('span');
+            spanScore.textContent = entry.score;
+            
+            row.appendChild(spanRank);
+            row.appendChild(spanName);
+            row.appendChild(spanScore);
+            
             this.leaderboardRows.appendChild(row);
         });
 
