@@ -793,6 +793,8 @@ canvas {
     max-width: 90%;
     font-family: var(--font-nes);
     /* Force Font */
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
 }
 
 .faq-list-item {

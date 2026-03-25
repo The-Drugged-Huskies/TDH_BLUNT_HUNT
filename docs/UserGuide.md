@@ -1,4 +1,4 @@
-# Blunt Hunt v0.82 - Developer User Guide
+# Blunt Hunt v0.84 - Developer User Guide
 
 This document contains internal development notes, deployment instructions, and maintenance details for **Blunt Hunt**.
 
@@ -176,7 +176,7 @@ All of these actions happen **simultaneously** in a single transaction:
 
 ### 6. UX Improvements
 
-- **Start Button**: Automatically disabled until the system verifies the payout status.
+- **Start Button**: Automatically disabled when wallet is disconnected or during payout status verification.
 - **Seamless Reset**: Confirming a payout resets the UI and Pot *without* reloading the page.
 - **Modal Suppression**: All non-essential UI popups are suppressed during active gameplay to prevent interruptions.
 

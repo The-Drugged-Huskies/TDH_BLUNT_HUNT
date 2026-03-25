@@ -1,4 +1,4 @@
-# Blunt Hunt v0.82
+# Blunt Hunt v0.84
 
 **Blunt Hunt** is a retro-style arcade game built for **Dogechain**, inspired by classic NES shooters. Launch a flying Husky from a physics-based slingshot to catch "Blunts" flying through the air!
 
@@ -85,7 +85,8 @@ To ensure a fair tournament for all players:
 - **Audio**: Procedural Sound Effects (Web Audio API).
 - **Progression**: Combo system, Special Blunts (Gold/Armored), Difficulty scaling.
 - **Web3**: Wallet integration, on-chain leaderboard, tournament pot.
-- **Mobile Support**: Touch controls, screen rotation.
+- **Mobile Support**: Touch controls, screen rotation, fully scrollable native FAQ menus.
+- **UI/UX**: Clear disabled states for un-connected wallets.
 
 ---
 
