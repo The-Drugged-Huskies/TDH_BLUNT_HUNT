@@ -19,10 +19,7 @@ abstract contract Context {
     }
 }
 
-/**Warning: Source file does not specify required compiler version! Consider adding "pragma solidity ^0.8.17;"
---> Leaderboard.sol
-
-Error handling compilation result: can't access property "Leaderboard.sol", output.contracts is undefined
+/**
  * @dev Contract module which provides a basic access control mechanism, where
  * there is an account (an owner) that can be granted exclusive access to
  * specific functions.
