@@ -466,7 +466,15 @@ class Game {
         // Timer Logic
         this.gameDuration = 60; // Fallback
 
-        // Removed obsolete fetchGameConfig
+        try {
+            if (window.leaderboardService) {
+                const contract = window.leaderboardService.getPublicContract();
+                const dur = await contract.gameRoundDuration();
+                this.gameDuration = dur.toNumber();
+            }
+        } catch (e) {
+            console.warn("Failed to fetch gameRoundDuration:", e);
+        }
 
         this.startTime = performance.now();
 
@@ -826,7 +834,6 @@ class Game {
                     let text = `+${points}`;
                     this.particles.spawnFloatingText(blunt.x, blunt.y, text, blunt.type === 'gold' ? '#FFD700' : '#fff');
 
-                    // Show multiplier details if significant (Separate Line)
                     // Show multiplier details if significant (Separate Line)
                     if (this.multiplier > 1) {
                         const multText = `x${this.multiplier}`;
