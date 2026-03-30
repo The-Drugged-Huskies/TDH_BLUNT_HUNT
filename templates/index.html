@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https: wss: http:; img-src 'self' data: blob:; media-src 'self' data: blob:;">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https: wss: http:; img-src 'self' data: blob:; media-src 'self' data: blob:;">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Blunt Hunt - Dogechain Edition</title>
     <!-- Fonts -->
@@ -15,8 +16,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <!-- Dependencies -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"
-        integrity="sha384-Htz1SE4Sl5aitpvFgr2j0sfsGUIuSXI6t8hEyrlQ93zflEF3a29bH2AvkUROUw7J"
-        crossorigin="anonymous"
+        integrity="sha384-Htz1SE4Sl5aitpvFgr2j0sfsGUIuSXI6t8hEyrlQ93zflEF3a29bH2AvkUROUw7J" crossorigin="anonymous"
         type="application/javascript"></script>
 
     <!-- Zoom Prevention -->
@@ -242,7 +242,7 @@
                                 <div class="faq-list-item">
                                     <div class="faq-question">MULTIPLIER</div>
                                     <div>Combo streaks increase multiplier up to 5x. Higher rounds grant even bigger
-                                        bonuses!</div>
+                                        bonuses! A siren sound indicates a round advance.</div>
                                 </div>
                             </div>
 
@@ -250,15 +250,15 @@
                             <div id="faq-rules" class="faq-content hidden">
                                 <div class="faq-list-item">
                                     <div class="faq-question">THE POT</div>
-                                    <div>75% of entry fees go to Pot. Dev fee is max 50%.</div>
+                                    <div>95% of entry fees go to Pot. Dev fee is max 50%.</div>
                                 </div>
                                 <div class="faq-list-item">
                                     <div class="faq-question">TOURNAMENT</div>
-                                    <div>Rounds reset on a timer. Highest score wins the entire Pot!</div>
+                                    <div>Tournament rounds reset on a timer. Highest score wins the entire Pot!</div>
                                 </div>
                                 <div class="faq-list-item">
                                     <div class="faq-question">PRIZES</div>
-                                    <div>Winner gets 100% of the Pot, sent automatically by the smart contract.</div>
+                                    <div>Winner gets 100% of the Pot.</div>
                                 </div>
                                 <div class="faq-list-item">
                                     <div class="faq-question">TICKET COST</div>
@@ -266,7 +266,9 @@
                                 </div>
                                 <div class="faq-list-item">
                                     <div class="faq-question">SECURITY</div>
-                                    <div>Scores are signed by the server with nonce-based replay protection. Sessions expire after 5 mins. No fund recovery function exists — all funds go to winners.</div>
+                                    <div>Scores are signed by the server with nonce-based replay protection. Sessions
+                                        expire after 5 mins.
+                                    </div>
                                 </div>
                             </div>
 
@@ -274,7 +276,7 @@
                             <div id="faq-support" class="faq-content hidden">
                                 <div class="faq-list-item">
                                     <div class="faq-question">GREY BUTTON?</div>
-                                    <div>Wait 1-2 mins for blockchain confirmation.</div>
+                                    <div>Wait 10-50 seconds for blockchain confirmation.</div>
                                 </div>
                                 <div class="faq-list-item">
                                     <div class="faq-question">INVALID SIG?</div>
